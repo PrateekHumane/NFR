@@ -1,0 +1,38 @@
+import "hashes/keccak/256bit" as keccak256
+
+def main(u32[4] card1_root, u32[4] card2_root , private u16 cardI1_ID, private u16 card2_ID, private u16 resultCard_ID,  ):
+	return a * a == b
+
+
+
+
+
+
+
+
+
+
+import "hashes/keccak/256bit" as keccak256
+
+// 0 - if hash1 < hash2
+// 1 - if hash1 == hash2
+// 2 - if hash1 > hash2
+def compareHash(u64[4] hash1, u64[4] hash2) -> u8:
+    u8 result = 1
+    for u32 i in 0..4 do
+        result = if hash1[i] == hash2[i] then result else if hash1[i] < hash2[i] then 1 else 0 fi fi
+    endfor
+    return result
+
+def main(u64[4] card1_root,private u64[4] card1_path1,private u64[4] card1_path2,private u64[4] card1_path3, private u64[4] card1_leaf ) -> bool: // change this to card1_ID
+    // make path a 2d array
+    u64[4] proofHash = card1_leaf
+    u64[8] concatHash =  if compareHash(proofHash, card1_path1) == 0 then [...proofHash, ...card1_path1] else [...card1_path1, ...proofHash] fi
+    proofHash = keccak256(concatHash)
+    concatHash =  if compareHash(proofHash, card1_path2) == 0 then [...proofHash, ...card1_path2] else [...card1_path2, ...proofHash] fi
+    proofHash = keccak256(concatHash)
+    concatHash =  if compareHash(proofHash, card1_path3) == 0 then [...proofHash, ...card1_path3] else [...card1_path3, ...proofHash] fi
+    proofHash = keccak256(concatHash)
+
+
+    return if compareHash(proofHash, card1_root) == 1 then true else false fi

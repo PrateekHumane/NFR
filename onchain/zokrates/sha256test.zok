@@ -1,0 +1,20 @@
+import "hashes/sha256/512bitPadded" as sha256
+
+// 0 - if hash1 < hash2
+// 1 - if hash1 == hash2
+// 2 - if hash1 > hash2
+def compareHash(u32[8] hash1, u32[8] hash2) -> u8:
+    u8 result = 1
+    for u32 i in 0..8 do
+        result = if hash1[7-i] == hash2[7-i] then result else if hash1[7-i] < hash2[7-i] then 0 else 2 fi fi
+    endfor
+    return result
+
+def main(private u32[3][8] card1_path, private u32[8] card1_leaf, u32[8] card1_root) -> u32[8]: // change this to card1_ID
+    // make path a 2d array
+    u32[8] proofHash = card1_leaf
+    for u32 i in 0..3 do
+        proofHash = if compareHash(proofHash, card1_path[i]) == 0 then sha256(proofHash, card1_path[i]) else sha256(card1_path[i], proofHash) fi
+    endfor
+    // return proofHash
+    // return if compareHash(proofHash, card1_root) == 1 then true else false fi
