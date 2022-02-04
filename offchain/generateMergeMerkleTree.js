@@ -1,4 +1,4 @@
-const merges = require('./sampleMerges.json');
+const merges = require('./merges.json');
 const { MerkleTree } = require('merkletreejs');
 const keccak256 = require('keccak256');
 const SHA256 = require('crypto-js/sha256')
@@ -11,29 +11,45 @@ function splitInto8(buff){
     return buffSplit.map(buffS => '0x'.concat(buffS));
 }
 
-function hashCard(mergeCombo) {
+const leaves = merges.map(merge => SHA256(CryptoJS.enc.Hex.parse(merge)))
+const merkleTree = new MerkleTree(leaves, SHA256, { sortPairs: true });
+// leaves.forEach((leaf)=>{console.log(leaf.toString())})
+console.log(splitInto8(merkleTree.getRoot().toString('hex')));
 
-    const hashes = mergeCombo.map(cardID => SHA256(cardID).toString());
+console.log(merges.length);
 
-    console.log(hashes);
-    // console.log(hashes.map(hash=>splitInto8(hash).join(',')));
+const merge1 = Buffer.from('0000000100000002000000010000000200000003FFFFFFFFFFFFFFFFFFFFFFFF','hex');
+console.log(merge1.toString('hex'))
+const mergeLeaf = SHA256(CryptoJS.enc.Hex.parse(merge1.toString('hex'))).toString();
+console.log(mergeLeaf);
 
-    const hashesParsed = CryptoJS.enc.Hex.parse(hashes.join(''));
-    return SHA256(hashesParsed);
+const proof = merkleTree.getHexProof(mergeLeaf);
+console.log(proof.length);
+console.log(merkleTree.verify(proof, mergeLeaf, merkleTree.getRoot().toString('hex')));
+
+console.log(proof)
+console.log(proof.map(p=>splitInto8(p.slice(2))));
+
+
+let proofHash = Buffer.from(mergeLeaf,'hex');
+console.log(proofHash.toString('hex'));
+for (const node of proof) {
+    const buffers = [];
+    if (Buffer.compare(proofHash, Buffer.from(node.slice(2),'hex')) == -1) {
+        buffers.push(proofHash, Buffer.from(node.slice(2),'hex'));
+    }
+    else {
+        buffers.push(Buffer.from(node.slice(2),'hex'), proofHash);
+    }
+    proofHash = merkleTree.hashFn(Buffer.concat(buffers));
+    console.log(proofHash.toString('hex'));
 }
 
-// const leaves = merges.map(merge => hashCard(merge));
-// console.log(leaves);
+console.log(proofHash);
 
-// const merkleTree = new MerkleTree(leaves, SHA256, { sortPairs: true });
-
-// console.log(merkleTree.getRoot());
-
-const mergeLeaf = Buffer.from('0000000100000002000000010000000200000003FFFFFFFFFFFFFFFFFFFFFFFF','hex');
-console.log(mergeLeaf.toString('hex'));
-console.log(CryptoJS.enc.Hex.parse(mergeLeaf.toString('hex')).toString())
-console.log(SHA256(CryptoJS.enc.Hex.parse(mergeLeaf.toString('hex'))).toString());
-console.log(splitInto8(SHA256(CryptoJS.enc.Hex.parse(mergeLeaf.toString('hex'))).toString()));
+// console.log(mergeLeaf.toString('hex'));
+// console.log(CryptoJS.enc.Hex.parse(mergeLeaf.toString('hex')).toString())
+// console.log(splitInto8(SHA256(CryptoJS.enc.Hex.parse(mergeLeaf.toString('hex'))).toString()));
 
 // console.log(Buffer.from('002').toString('hex'))
 // console.log(Buffer.from('999').toString('hex'))

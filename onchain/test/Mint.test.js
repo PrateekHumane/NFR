@@ -32,16 +32,16 @@ describe('NFR', function () {
         expect((await this.contract.cardsRedeemed()).toString()).to.equal('1');
     });
 
-    it('verify attributes', async function () {
-        await this.contract.mint();
-        const cardId = 0;
-
-        const leaf = hashCard("card #", "001");
-        const proof = this.merkleTree.getHexProof(leaf);
-        expect((await this.contract.verify(cardId,leaf,proof))).to.equal(true);
-
-        const leafFake = hashCard("card #", "002");
-        const proofFake = this.merkleTree.getHexProof(leaf);
-        expect((await this.contract.verify(cardId,leafFake,proofFake))).to.equal(false);
-    });
+    // it('verify attributes', async function () {
+    //     await this.contract.mint();
+    //     const cardId = 0;
+    //
+    //     const leaf = hashCard("card #", "001");
+    //     const proof = this.merkleTree.getHexProof(leaf);
+    //     expect((await this.contract.verify(cardId,leaf,proof))).to.equal(true);
+    //
+    //     const leafFake = hashCard("card #", "002");
+    //     const proofFake = this.merkleTree.getHexProof(leaf);
+    //     expect((await this.contract.verify(cardId,leafFake,proofFake))).to.equal(false);
+    // });
 });

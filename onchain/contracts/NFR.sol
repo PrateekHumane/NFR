@@ -9,43 +9,64 @@ contract NFR is ERC721 {
 
     // some are hiddenCards and some are regular cards. Some ERC721 or ERC20
 
-    uint8 public constant MAX_MINTABLE = 3;
-    uint16 public cardsRedeemed;
+    uint8 public constant MAX_MINTABLE = 5000;
+    uint16 public packsMinted;
 
     // if we need more info than merkleRoot per card, then create a struct that the ID maps to
     // map from hiddenCardId -> merkleRoot
-    uint256[3] public baseCardTokenIDs; //tokenIDs of baseCards are also merkle roots
+    uint16[9] public baseCardCopyCounts = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+    uint256[9] public baseCardHashedDescription = [0, 0, 0, 0, 0, 0, 0, 0, 0];
 
-    // mapping (uint256 => bytes32) cardIdToMerkleRoot;
-    // map from mintNum to hiddenCardId
-    // mapping (uint16 => uint256) mintOrder;
-    // mapping (uint16 => bytes32) hiddenCardIdToMerkleRoot;
+    struct Artifact {
+        uint8 num;
+        uint16 copyNum;
+        // HIDDEN VALUES:
+        uint256 longDescriptionHashed;
+        uint256 privateKey;
+    }
 
-     mapping (uint256 => uint) mergeTime;
+    mapping(uint256 => Artifact) private publicArtifacts;
 
     MERGE merge;
 
-    constructor(address _merge) ERC721("NFR island", "NFR") {
-        cardsRedeemed = 0;
-        baseCardTokenIDs[0]=0x3622270ee2d86a424ec39b290b301909faa80691a96f1db92509a8a1ba6bac21;
-        baseCardTokenIDs[1]=0x325337c6f247e8915fb53a3edbf19a210d283edc26e02f14b5d0d54e8ee9ce11;
-        baseCardTokenIDs[2]=0x8f5dcb386d0518b8615b08d9589ee65883faf02d5da0e3d62950d328b4d94040;
-        merge = MERGE(_merge);
+    constructor(address _merge) ERC721("NFR island", "NFR") public {
+        packsMinted = 0;
+//        merge = MERGE(_merge);
     }
 
-    function mint() external payable {
-        require(cardsRedeemed < MAX_MINTABLE);
-        _safeMint(msg.sender, baseCardTokenIDs[cardsRedeemed]);
-        cardsRedeemed+=1;
+    function mintPack (uint8[3] cards) public external payable {
+        require(packsMinted < MAX_MINTABLE);
+        // three cards decided must be base cards
+        for (let i = 0; i < 3; i++)
+            require(cards[i] <= 50 && cards[i] >= 42);
+
+        // additional card based on when you mint the pack
+        cards.push(packsMinted % 9 + 42);
+        for (let i = 0; i < 3; i++)
+            Artifact memory artifactToMint;
+            artifactToMint.num = cards[i];
+            baseCardCopyCounts[cards[i]-42] += 1;
+            artifactToMint.copyNum = baseCardCopyCounts[cards[i]-42];
+            artifactToMint.longDescriptionHashed = baseCardHashedDescription[cards[i]-42];
+            artifactToMint.privateKey = 0;
+
+            // create a merkle tree out of each card
+            uint256 merkleRoot = sha256(sha256(sha256(artifactsMinted[i].num),sha256(artifactsMinted[i].copyNum)),sha256(artifactsMinted[i].longDescriptionHashed, artifactsMinted[i].privateKey));
+            publicArtifacts[merkleRoot] = artifactToMint;
+            _safeMint(msg.sender, merkleRoot); // TODO: do I need to ensure the root is unique beforehand?
+
+        // TODO: mint 5 merge tokens and a random spell card according to distribution
+
+        packsMinted +=1;
     }
 
-    function useMergeToken(uint256 card1, uint256 card2) external {
-        require(ownerOf(card1) == _msgSender(),"Must own card1");
-        require(ownerOf(card2) == _msgSender(),"Must own card2");
-        merge.burn(_msgSender(), 1);
-        mergeTime[card1]=block.timestamp;
-        mergeTime[card2]=block.timestamp;
-    }
+//    function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
+//       require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token");
+//
+//       // https://cloudflare-ipfs.com/ipns/ {TOKEN ID} .dogsunchainednft.com
+//       return string(abi.encodePacked(prefix, tokenId.toString(), suffix));
+//    }
+
 
     function merge(Proof memory proof, uint[40] memory input) external {
         uint256 card1 = convert64bitTo256bit(input[:4]);
@@ -55,18 +76,6 @@ contract NFR is ERC721 {
         // get merge result offchain using chainlink
     }
 
-    // function: check if the proof is valid for ZKP indicating whether a leaf and proof is valid
-    // this to show the information you are presenting to the user is fair
-    // don't use this function - if people use this, then others can see if the card# is a part of cardID
-    // they can check every card# -> leaf and see which leaf they tried that was a successful verification
-    // we can't make the card#'s random ids because we need a list of them to prove the game is winable
-    // instead do the verification offchain, no reason to do it onchain anyways
-//    function verify(uint16 cardId, bytes32 leaf, bytes32[] memory proof)
-//    public view returns (bool)
-//    {
-//        require(msg.sender == ownerOf(cardId));
-//        return MerkleProof.verify(proof, merkleRoots[cardId], leaf);
-//    }
     function convert64bitTo256bit(uint[4] memory inputArray) internal {
         uint result = 0;
         for (uint8 i =0; i < 4; i++)

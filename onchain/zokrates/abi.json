@@ -1,65 +1,42 @@
 {
   "inputs": [
     {
-      "name": "card1_path",
+      "name": "input_cards_IDs",
       "public": false,
       "type": "array",
       "components": {
-        "size": 3,
+        "size": 2,
+        "type": "u32"
+      }
+    },
+    {
+      "name": "input_cards_path",
+      "public": false,
+      "type": "array",
+      "components": {
+        "size": 2,
+        "type": "array",
+        "components": {
+          "size": 3,
+          "type": "array",
+          "components": {
+            "size": 8,
+            "type": "u32"
+          }
+        }
+      }
+    },
+    {
+      "name": "input_cards_roots",
+      "public": true,
+      "type": "array",
+      "components": {
+        "size": 2,
         "type": "array",
         "components": {
           "size": 8,
           "type": "u32"
         }
-      }
-    },
-    {
-      "name": "card1_ID",
-      "public": false,
-      "type": "array",
-      "components": {
-        "size": 3,
-        "type": "u32"
-      }
-    },
-    {
-      "name": "card1_root",
-      "public": true,
-      "type": "array",
-      "components": {
-        "size": 8,
-        "type": "u32"
-      }
-    },
-    {
-      "name": "card2_path",
-      "public": false,
-      "type": "array",
-      "components": {
-        "size": 3,
-        "type": "array",
-        "components": {
-          "size": 8,
-          "type": "u32"
-        }
-      }
-    },
-    {
-      "name": "card2_ID",
-      "public": false,
-      "type": "array",
-      "components": {
-        "size": 3,
-        "type": "u32"
-      }
-    },
-    {
-      "name": "card2_root",
-      "public": true,
-      "type": "array",
-      "components": {
-        "size": 8,
-        "type": "u32"
       }
     },
     {
@@ -67,7 +44,7 @@
       "public": false,
       "type": "array",
       "components": {
-        "size": 1,
+        "size": 11,
         "type": "array",
         "components": {
           "size": 8,
@@ -76,7 +53,16 @@
       }
     },
     {
-      "name": "result_cards",
+      "name": "result_cards_IDs",
+      "public": false,
+      "type": "array",
+      "components": {
+        "size": 3,
+        "type": "u32"
+      }
+    },
+    {
+      "name": "result_cards_paths",
       "public": false,
       "type": "array",
       "components": {
@@ -84,20 +70,11 @@
         "type": "array",
         "components": {
           "size": 3,
-          "type": "u32"
-        }
-      }
-    },
-    {
-      "name": "card3_path",
-      "public": false,
-      "type": "array",
-      "components": {
-        "size": 3,
-        "type": "array",
-        "components": {
-          "size": 8,
-          "type": "u32"
+          "type": "array",
+          "components": {
+            "size": 8,
+            "type": "u32"
+          }
         }
       }
     },
@@ -113,7 +90,33 @@
           "type": "u32"
         }
       }
+    },
+    {
+      "name": "cards_minted_hash",
+      "public": true,
+      "type": "array",
+      "components": {
+        "size": 8,
+        "type": "u32"
+      }
+    },
+    {
+      "name": "cards_minted_preimage",
+      "public": false,
+      "type": "array",
+      "components": {
+        "size": 32,
+        "type": "u32"
+      }
     }
   ],
-  "outputs": []
+  "outputs": [
+    {
+      "type": "array",
+      "components": {
+        "size": 32,
+        "type": "u32"
+      }
+    }
+  ]
 }

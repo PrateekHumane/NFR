@@ -3,8 +3,8 @@ import "hashes/sha256/512bit" as sha512
 import "hashes/sha256/256bitPadded" as sha256Padded
 
 const u32[8] merge_root= [
-    0x4e5499f0,0x4c74a84d,0x9bab174b,0xf116d672,
-    0x0f33034e,0x50b79d1b,0x80e661e1,0x4645518e
+    0x660a8ac4,0x231b0993,0x433273c2,0x1f5686e0,
+    0xcda230e8,0x843dfce6,0xc39eaa67,0xb1171f18
 ]
 
 // 0 - if hash1 < hash2
@@ -31,7 +31,7 @@ def verifyProofDepth3(private u32[3][8] proof, private u32[8] leaf, u32[8] root)
     endfor
     return if compareHash(proofHash, root) == 1 then true else false fi
 
-def verifyMerge(private u32[1][8] merge_proof, private u32 card1_ID_combined, private u32 card2_ID_combined, private u32[3][3] result_cards) -> bool:
+def verifyMerge(private u32[11][8] merge_proof, private u32 card1_ID_combined, private u32 card2_ID_combined, private u32[3][3] result_cards) -> bool:
     // u32[8] dummyblock1 = [0x80000000,0x00000000,0x00000000,0x00000000,0x00000000,0x00000000,0x00000000,0x00000300]
     // proof starts with leaf, which is hash of the three card leaves
     // u32[8] proofHash = sha1024(card1_IDleaf,card2_IDleaf,card3_IDleaf,dummyblock1)
@@ -42,30 +42,31 @@ def verifyMerge(private u32[1][8] merge_proof, private u32 card1_ID_combined, pr
     u32[8] merge_leaf = [card1_ID_combined, card2_ID_combined, ...result_cards_combined ,0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF]
 
     u32[8] proofHash = sha256Padded(merge_leaf)
-    // for u32 i in 0..1 do
-    //     proofHash = if compareHash(proofHash, merge_proof[i]) == 0 then sha512(proofHash, merge_proof[i]) else sha512(merge_proof[i], proofHash) fi
-    // endfor
+    for u32 i in 0..11 do
+        proofHash = if compareHash(proofHash, merge_proof[i]) == 0 then sha512Padded(proofHash, merge_proof[i]) else sha512Padded(merge_proof[i], proofHash) fi
+    endfor
     return if compareHash(proofHash, merge_root) == 1 then true else false fi
 
-def main(u32[3][8] card1_path, private u32[3] card1_ID, u32[8] card1_root, u32[3][8] card2_path, private u32[3] card2_ID, u32[8] card2_root, u32[1][8] merge_proof, private u32[3][3] result_cards, u32[3][8] card3_path, u32[3][8] result_cards_roots): // change this to card1_ID
+def main(private u32[3][8] card1_path, private u32[3] card1_ID, u32[8] card1_root, private u32[3][8] card2_path, private u32[3] card2_ID, u32[8] card2_root, private u32[11][8] merge_proof, private u32[3][3] result_cards, private u32[3][8] card3_path, u32[3][8] result_cards_roots): // change this to card1_ID
     assert(verifyProofDepth3(card1_path,makeCard(card1_ID),card1_root))
     assert(verifyProofDepth3(card2_path,makeCard(card2_ID),card2_root))
 
-    u32 card1_ID_combined = card1_ID[2]+card1_ID[1]*10+card1_ID[0]*100
-    u32 card2_ID_combined = card2_ID[2]+card2_ID[1]*10+card2_ID[0]*100
+    // u32 card1_ID_combined = card1_ID[2]+card1_ID[1]*10+card1_ID[0]*100
+    // u32 card2_ID_combined = card2_ID[2]+card2_ID[1]*10+card2_ID[0]*100
 
-    assert(verifyMerge(merge_proof, card1_ID_combined, card2_ID_combined, result_cards))
+    // assert(verifyMerge(merge_proof, card1_ID_combined, card2_ID_combined, result_cards))
 
+    // can do this onchain if that helps
     // assert card 1 and 2 roots are the same as results or there is no card there
     // dummy card root used when resulting card gets burned
-    u32[8] dummy_root = [
-        0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF,
-        0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF
-    ]
-    assert(compareHash(card1_root,dummy_root)==1 || compareHash(card1_root,result_cards_roots[0])==1)
-    assert(compareHash(card2_root,dummy_root)==1  || compareHash(card2_root,result_cards_roots[1])==1)
-    // u32[8] card3_leaf = makeCard(result_cards[2])
-    // u32[8] card3_root = result_cards_roots[2]
-    // assert(verifyProofDepth3(card3_path,card3_leaf,card3_root))
+    // u32[8] dummy_root = [
+    //     0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF,
+    //     0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF
+    // ]
+    // assert(compareHash(card1_root,dummy_root)==1 || compareHash(card1_root,result_cards_roots[0])==1)
+    // assert(compareHash(card2_root,dummy_root)==1  || compareHash(card2_root,result_cards_roots[1])==1)
+    u32[8] card3_leaf = makeCard(result_cards[2])
+    u32[8] card3_root = result_cards_roots[2]
+    assert(verifyProofDepth3(card3_path,card3_leaf,card3_root))
 
     return
