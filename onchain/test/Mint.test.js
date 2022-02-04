@@ -2,7 +2,6 @@ const {accounts, contract} = require('@openzeppelin/test-environment');
 
 const cards = require('./sampleCards.json');
 const { MerkleTree } = require('merkletreejs');
-const keccak256 = require('keccak256');
 const {expect} = require('chai');
 const { ethers } = require("ethers");
 
@@ -23,7 +22,7 @@ describe('NFR', function () {
     });
 
     before(async function() {
-        this.merkleTree = new MerkleTree(Object.entries(cards).map(attribute => hashCard(...attribute)), keccak256, { sortPairs: true });
+        this.merkleTree = new MerkleTree(Object.entries(cards).map(attribute => hashCard(...attribute)), sha256, { sortPairs: true });
     });
 
     it('minting', async function () {
