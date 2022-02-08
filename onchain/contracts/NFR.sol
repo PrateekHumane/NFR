@@ -40,7 +40,8 @@ contract NFR is ERC721 {
     }
 
     function mintPack(uint8 artifact1, uint8 artifact2,uint8 artifact3) external payable returns (uint256[4] memory){
-        require(msg.value >= MINT_PRICE);
+        // TODO: comment back in after testing
+//        require(msg.value >= MINT_PRICE);
         require(packsMinted < MAX_MINTABLE);
         // three cards decided must be base cards
         require(artifact1 <= 50 && artifact1 >= 42);
@@ -90,7 +91,7 @@ contract NFR is ERC721 {
         uint256 merkleRoot = getArtifactMerkleRoot(artifactToReveal);
         require (tokenId == merkleRoot);
 
-        publicArtifacts[merkleRoot] = artifactToMint;
+        publicArtifacts[merkleRoot] = artifactToReveal;
     }
 
     function endGame() external {
@@ -102,7 +103,7 @@ contract NFR is ERC721 {
         payable(msg.sender).transfer(MAX_MINTABLE * MINT_PRICE);
     }
 
-    function getArtifactMerkleRoot(Artifact artifact) internal returns(uint256){
+    function getArtifactMerkleRoot(Artifact memory artifact) internal returns(uint256){
         return uint256(sha256(abi.encodePacked(sha256(abi.encodePacked(sha256(abi.encodePacked(artifact.num)), sha256(abi.encodePacked(artifact.copyNum)))), sha256(abi.encodePacked(abi.encodePacked(artifact.longDescriptionHashed), sha256(abi.encodePacked(artifact.privateKey)))))));
     }
 
