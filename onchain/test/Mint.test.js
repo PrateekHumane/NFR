@@ -21,14 +21,18 @@ describe('NFR', function () {
         this.contract = await NFRContract.new({ from: owner });
     });
 
-    before(async function() {
-        this.merkleTree = new MerkleTree(Object.entries(cards).map(attribute => hashCard(...attribute)), sha256, { sortPairs: true });
-    });
+    // before(async function() {
+    //     this.merkleTree = new MerkleTree(Object.entries(cards).map(attribute => hashCard(...attribute)), sha256, { sortPairs: true });
+    // });
 
     it('minting', async function () {
-        expect((await this.contract.cardsRedeemed()).toString()).to.equal('0');
-        await this.contract.mint();
-        expect((await this.contract.cardsRedeemed()).toString()).to.equal('1');
+        // console.log(await this.contract.packsMinted());
+        // expect((await this.contract.packsMinted()).toString()).to.equal('0');
+        await this.contract.mintPack(42,43,44);
+        const roots = await this.contract.publicArtifacts();
+        console.log(roots);
+
+        // expect((await this.contract.packsMinted()).toString()).to.equal('1');
     });
 
     // it('verify attributes', async function () {

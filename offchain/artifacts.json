@@ -1,0 +1,23 @@
+[
+  {
+    "cardNum": 42,
+    "title": "Ocean",
+    "rank": "SS",
+    "limit": "1:3",
+    "description": "there are fish here"
+  },
+  {
+    "cardNum": 2,
+    "title": "Fishing Rod",
+    "rank": "A",
+    "limit": "1:100",
+    "description": "used for fishing"
+  },
+  {
+    "cardNum": 3,
+    "title": "Koi",
+    "rank": "S",
+    "limit": "1:10",
+    "description": "fish"
+  }
+]

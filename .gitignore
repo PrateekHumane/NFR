@@ -1,3 +1,4 @@
 .idea
 onchain/zokrates/out
 onchain/zokrates/proving.key
+node_modules
