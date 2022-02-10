@@ -1,23 +1,17 @@
 [
   {
-    "cardNum": 42,
-    "title": "Ocean",
-    "rank": "SS",
-    "limit": "1:3",
-    "description": "there are fish here"
+    "cardNum": 46,
+    "title": "The Jade Sea",
+    "description": "Home to lost treasures, never before seen aquatic creatures and the old fauna of the Aruna’s oases."
   },
   {
-    "cardNum": 2,
+    "cardNum": 47,
     "title": "Fishing Rod",
-    "rank": "A",
-    "limit": "1:100",
-    "description": "used for fishing"
+    "description": "An invaluable tool left behind by the old inhabitants of the desert region. Useful for capturing species at the bottom of the food chain."
   },
   {
-    "cardNum": 3,
+    "cardNum": 40,
     "title": "Koi",
-    "rank": "S",
-    "limit": "1:10",
-    "description": "fish"
+    "description": "Fluorescent Koi do not belong in the salt filled Jade Sea, they prefer pure and tranquil sources of water where they absorb light energy to continuously cleanse their home."
   }
 ]

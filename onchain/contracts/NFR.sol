@@ -62,7 +62,7 @@ contract NFR is ERC721 {
             // create a merkle tree out of each card
             uint256 merkleRoot = getArtifactMerkleRoot(artifactToMint);
             publicArtifacts[merkleRoot] = artifactToMint;
-            _safeMint(msg.sender, merkleRoot);
+            _safeMint(msg.sender, merkleRoot); // _msgSender() instead?
             // TODO: do I need to ensure the root is unique beforehand?
             results[i] = merkleRoot;
         }
@@ -94,7 +94,18 @@ contract NFR is ERC721 {
         publicArtifacts[merkleRoot] = artifactToReveal;
     }
 
-    function endGame() external {
+    function endGame(uint256[5] memory tokenIds, Artifact[5] memory genesisArtifacts) external {
+        bool[5] memory hasGenesisCard = [false, false, false, false, false];
+        for (uint8 i = 0; i < 5; i++) {
+            require (ownerOf(tokenIds[i]) == msg.sender); // must own the genesis cards
+            require (tokenIds[i] == getArtifactMerkleRoot(genesisArtifacts[i])); // ensure artifact is correct
+            require (genesisArtifacts[i].num <= 5 && genesisArtifacts[i].num > 0); // is a genesis card
+            hasGenesisCard[genesisArtifacts[i].num - 1] = true;
+        }
+
+        for (uint8 i = 0; i < 5; i++)
+            require(hasGenesisCard[i]);
+
         require(gameOngoing == true);
         assert(address(this).balance >= MAX_MINTABLE * MINT_PRICE);
 

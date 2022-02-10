@@ -4,6 +4,14 @@ const CryptoJS = require('crypto-js')
 const SHA256 = require('crypto-js/sha256')
 var sha256 = require('js-sha256');
 
+function splitInto8(hex){
+    hex = hex.replace('0x','');
+    const hexSplit= [hex.slice(0,8),hex.slice(8,16), hex.slice(16,24),hex.slice(24,32), hex.slice(32,40),hex.slice(40,48), hex.slice(48,56),hex.slice(56,64) ];
+    return hexSplit;
+}
+
+const abi_format = (hex) => splitInto8(hex).map((hexSplit)=>'0x'+hexSplit.replace('0x',''));
+
 const artifcatTrees = artifacts.map( artifact => {
     console.log(artifact);
 
@@ -21,5 +29,7 @@ const artifcatTrees = artifacts.map( artifact => {
     console.log(leaves.map(leaf => leaf.toString()));
 
     const merkleTree = new MerkleTree(leaves, SHA256);
-    console.log("root",merkleTree.getRoot().toString('hex') );
+    const proof = merkleTree.getHexProof(cardNumHashed);
+    console.log("proof", proof.map(hex=>abi_format(hex)));
+    console.log("root",abi_format(merkleTree.getRoot().toString('hex') ));
 });

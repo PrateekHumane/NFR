@@ -1,12 +1,13 @@
 import json
 from itertools import combinations
-cards = range(1,49)
+cards = range(1,50)
 
 mergeLeaves = []
 for card_combo in (list(combinations(cards, 2))):
-    mergeLeaf = '%08d%08d' % card_combo
+    mergeLeaf = '%0.8X%0.8X' % card_combo
     mergeLeaf += mergeLeaf
-    mergeLeaf += ('F'*8*4)
+    mergeLeaf += '%0.8X' % 51
+    mergeLeaf += ('F'*8*3)
     mergeLeaves.append(mergeLeaf)
 
 with open('merges.json', 'w') as outfile:
