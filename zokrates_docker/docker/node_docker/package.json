@@ -1,0 +1,13 @@
+{
+  "name": "node_zkp_docker",
+  "version": "1.0.0",
+  "description": "Node.js server to run Zokrates ZKP",
+  "author": "Prateek Humane",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.16.1"
+  }
+}

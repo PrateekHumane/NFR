@@ -1,0 +1,118 @@
+{
+  "inputs": [
+    {
+      "name": "input_cards_IDs",
+      "public": false,
+      "type": "array",
+      "components": {
+        "size": 2,
+        "type": "u32"
+      }
+    },
+    {
+      "name": "input_cards_path",
+      "public": false,
+      "type": "array",
+      "components": {
+        "size": 2,
+        "type": "array",
+        "components": {
+          "size": 2,
+          "type": "array",
+          "components": {
+            "size": 8,
+            "type": "u32"
+          }
+        }
+      }
+    },
+    {
+      "name": "input_cards_roots",
+      "public": true,
+      "type": "array",
+      "components": {
+        "size": 2,
+        "type": "array",
+        "components": {
+          "size": 8,
+          "type": "u32"
+        }
+      }
+    },
+    {
+      "name": "merge_proof",
+      "public": false,
+      "type": "array",
+      "components": {
+        "size": 11,
+        "type": "array",
+        "components": {
+          "size": 8,
+          "type": "u32"
+        }
+      }
+    },
+    {
+      "name": "result_cards_IDs",
+      "public": false,
+      "type": "array",
+      "components": {
+        "size": 3,
+        "type": "u32"
+      }
+    },
+    {
+      "name": "result_cards_paths",
+      "public": false,
+      "type": "array",
+      "components": {
+        "size": 3,
+        "type": "array",
+        "components": {
+          "size": 8,
+          "type": "u32"
+        }
+      }
+    },
+    {
+      "name": "result_cards_roots",
+      "public": true,
+      "type": "array",
+      "components": {
+        "size": 3,
+        "type": "array",
+        "components": {
+          "size": 8,
+          "type": "u32"
+        }
+      }
+    },
+    {
+      "name": "cards_minted_hash",
+      "public": true,
+      "type": "array",
+      "components": {
+        "size": 8,
+        "type": "u32"
+      }
+    },
+    {
+      "name": "cards_minted_preimage",
+      "public": false,
+      "type": "array",
+      "components": {
+        "size": 32,
+        "type": "u32"
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "type": "array",
+      "components": {
+        "size": 8,
+        "type": "u32"
+      }
+    }
+  ]
+}
