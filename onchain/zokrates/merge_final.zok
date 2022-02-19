@@ -66,7 +66,7 @@ def getCardLimitIndex(u32 cardID) -> u32:
 def getCardCount(u32 cardID,u32 cardCountBlock) -> u32:
     return (if cardID%2==1 then cardCountBlock >> 16 else cardCountBlock & 0x00001111 fi)
 
-def main(private u32[2] input_cards_IDs, private u32[2][2][8] input_cards_path, u32[2][8] input_cards_roots, private u32[11][8] merge_proof, private u32[3] result_cards_IDs, private u32[3][8] result_cards_paths, u32[3][8] result_cards_roots, u32[8] cards_minted_hash, private u32[32] cards_minted_preimage) -> u32[8]: // change this to card1_ID
+def main(private u32[2] input_cards_IDs, private u32[2][2][8] input_cards_path, u32[2][8] input_cards_roots, private u32[11][8] merge_proof, private u32[3] result_cards_IDs, private u32[3][8] result_cards_paths, u32[3][8] result_cards_roots, u32[8] cards_minted_hash, private u32[32] cards_minted_preimage, private u32[8] cards_minted_secret_key) -> u32[8]: // change this to card1_ID
     // TODO: can make this smaller by just returning the hash and then checking on chain if the values are equal (cards minted prehash equals what we return) ... can actually do this for all public inputs
     // assert the preimage is correct
     assert(compareHash(sha1024Padded(cards_minted_preimage[0..8],cards_minted_preimage[8..16],cards_minted_preimage[16..24],cards_minted_preimage[24..32]),cards_minted_hash)==1)
@@ -102,6 +102,5 @@ def main(private u32[2] input_cards_IDs, private u32[2][2][8] input_cards_path, 
     endfor
     // // the following line is to ensure the hash for the card limits changes every time
     // // this way the user wont know if a merge is succesful or not until after they spend merge token
-    cards_minted_preimage[31] = cards_minted_preimage[31] + 1
-    // // TODO: change end of primage secretly
-    return sha1024Padded(cards_minted_preimage[0..8],cards_minted_preimage[8..16],cards_minted_preimage[16..24],cards_minted_preimage[24..32])
+
+    return sha1024Padded(cards_minted_preimage[0..8],cards_minted_preimage[8..16],cards_minted_preimage[16..24], cards_minted_secret_key)

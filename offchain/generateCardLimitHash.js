@@ -1,4 +1,4 @@
-const num_cards = 49
+const num_cards = 48
 console.log(Math.floor(Math.random()*2^((64-num_cards)*16)-1).toString(16))
 console.log((64-num_cards)*16/4)
 let hash = ''
