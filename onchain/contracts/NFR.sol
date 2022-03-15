@@ -2,17 +2,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 //import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "./MERGE.sol";
 import "./RareRelics.sol";
 
-contract NFR is ERC721 {
+contract NFR is ERC721Enumerable, Ownable  {
 
     // some are hiddenCards and some are regular cards. Some ERC721 or ERC20
 
     uint256 public constant MINT_PRICE = .05 ether;
-    uint16 public constant MAX_MINTABLE = 10;
+    uint16 public constant MAX_MINTABLE = 5000;
     uint16 public packsMinted;
     bool public gameOngoing;
 
@@ -36,6 +37,9 @@ contract NFR is ERC721 {
     MERGE merge;
     RareRelics rareRelics;
 
+    address BlackMarketAddress;
+    bool BlackMarketAddressSet;
+
     uint256 private _nonce;
 
     constructor(address _merge, address _rareRelics) ERC721("NFR island", "NFR") {
@@ -43,16 +47,17 @@ contract NFR is ERC721 {
         gameOngoing = false;
         merge = MERGE(_merge);
         rareRelics = RareRelics(_rareRelics);
+        BlackMarketAddressSet = false;
     }
 
     function mintPack(uint8 artifact1, uint8 artifact2, uint8 artifact3) external payable returns (uint256[4] memory){
         // TODO: comment back in after testing
         //        require(msg.value >= MINT_PRICE);
-        require(packsMinted < MAX_MINTABLE);
+        require(packsMinted < MAX_MINTABLE, "MAX PACKS MINTED");
         // three cards decided must be base cards
-        require(artifact1 <= 50 && artifact1 >= 42);
-        require(artifact2 <= 50 && artifact2 >= 42);
-        require(artifact3 <= 50 && artifact3 >= 42);
+        require(artifact1 <= 50 && artifact1 >= 42, "CAN ONLY REQUEST BASE CARD");
+        require(artifact2 <= 50 && artifact2 >= 42, "CAN ONLY REQUEST BASE CARD");
+        require(artifact3 <= 50 && artifact3 >= 42, "CAN ONLY REQUEST BASE CARD");
 
         // additional card based on when you mint the pack
         uint8[4] memory artifactNums = [artifact1, artifact2, artifact3, uint8(packsMinted % 9 + 42)];
@@ -74,7 +79,10 @@ contract NFR is ERC721 {
             results[i] = merkleRoot;
         }
 
-        // TODO: mint 5 merge tokens and a random spell card according to distribution
+        // allow black market to control these tokens for when you stake
+        setApprovalForAll(BlackMarketAddress, true);
+        rareRelics.mintFromPack(msg.sender);
+        merge.mint(msg.sender, 5000000);
 
         packsMinted += 1;
 
@@ -125,21 +133,21 @@ contract NFR is ERC721 {
         payable(msg.sender).transfer(MAX_MINTABLE * MINT_PRICE);
     }
 
-    function getArtifactMerkleRoot(Artifact memory artifact) internal returns (uint256){
+    function getArtifactMerkleRoot(Artifact memory artifact) internal pure returns (uint256){
         return uint256(sha256(abi.encodePacked(sha256(abi.encodePacked(sha256(abi.encodePacked(artifact.num)), sha256(abi.encodePacked(artifact.copyNum)))), sha256(abi.encodePacked(abi.encodePacked(artifact.longDescriptionHashed), sha256(abi.encodePacked(artifact.privateKey)))))));
     }
 
     event cardStolen(address from, address to, uint256 tokenId);
 
-    function stealCard(address from, address to, uint256 tokenId) public isRareRelicContract {
+    function stealCard(address from, address to, uint256 tokenId) public isBlackMarketContract {
         emit cardStolen(from, to, tokenId);
         transferFrom(from, to, tokenId);
     }
 
     event cardBurnt(address owner, uint256 tokenId);
 
-    function duplicateCard(uint256 tokenId) public isRareRelicContract {
-        Artifact newCard = Artifact({
+    function duplicateCard(uint256 tokenId) public isBlackMarketContract {
+        Artifact memory newCard = Artifact({
             num : publicArtifacts[tokenId].num,
             copyNum : publicArtifacts[tokenId].copyNum, // duplicate doesn't increase the version num (this is power of the card) even when limit is reached more copies can be made
             longDescriptionHashed : publicArtifacts[tokenId].longDescriptionHashed,
@@ -151,10 +159,10 @@ contract NFR is ERC721 {
         _safeMint(ownerOf(tokenId), merkleRoot);
     }
 
-    function transformCard(uint256 inputTokenId, uint256 targetTokenId) public isRareRelicContract {
+    function transformCard(uint256 inputTokenId, uint256 targetTokenId) public isBlackMarketContract {
         emit cardBurnt(ownerOf(inputTokenId), inputTokenId);
         _burn(inputTokenId);
-        Artifact newCard = Artifact({
+        Artifact memory newCard = Artifact({
             num : publicArtifacts[targetTokenId].num,
             copyNum : publicArtifacts[targetTokenId].copyNum,
             longDescriptionHashed : publicArtifacts[targetTokenId].longDescriptionHashed,
@@ -166,9 +174,17 @@ contract NFR is ERC721 {
         _safeMint(ownerOf(inputTokenId), merkleRoot);
     }
 
+    function setBlackMarketAddress(address _BlackMarketAddress) external onlyOwner {
+        require (BlackMarketAddressSet == false, "already set BlackMarket contract address");
+        BlackMarketAddress = _BlackMarketAddress;
+        BlackMarketAddressSet = true;
+//        setApprovalForAll(BlackMarketAddress, true);
+    }
 
-    modifier isRareRelicContract {
-        require(_msgSender() != address(rareRelics), "ONY RARE RELICS CONTRACT CAN CALL THIS FUNCTION");
+    modifier isBlackMarketContract {
+        require(BlackMarketAddressSet == true, "BlaCK MARKET CONTRACT NOT SET");
+        require(msg.sender == BlackMarketAddress, "ONlY BlaCK MARKET CONTRACT CAN CALL THIS FUNCTION");
+        _;
     }
 
     modifier whenGameOngoing {
@@ -194,7 +210,12 @@ contract NFR is ERC721 {
     //        uint256 card2 = convert64bitTo256bit(input[4:8]);
     //        require(ownerOf(card1) == _msgSender(),"Must own card1");
     //        require(ownerOf(card2) == _msgSender(),"Must own card2");
-    //        // get merge result offchain using chainlink
+    //        // verify merge result
+    //        _burn(card1);
+    //        _burn(card1);
+    //        uint256 card3 = convert64bitTo256bit(input[x:x+4]);
+    //        uint256 card4 = convert64bitTo256bit(input[4:8]);
+    //        _safeMint(msg.sender,card3);
     //    }
 
     //    function convert64bitTo256bit(uint[4] memory inputArray) internal {

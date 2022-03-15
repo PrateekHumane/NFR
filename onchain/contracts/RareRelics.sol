@@ -1,226 +1,135 @@
 pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "./NFR.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
+import "./NFRTypes.sol";
 import "./MERGE.sol";
 
-contract RareRelics is ERC721 {
-
-    NFR nfr;
-    MERGE merge;
+contract RareRelics is ERC721Enumerable, Ownable {
+    using Counters for Counters.Counter;
+    Counters.Counter private _tokenIds;
 
     enum SpellTypes{DEFEND, STEAL, SWAP, DUPLICATE, TRANSFORM}
-    enum Ranks{C, B, A, S, SS}
-
-    uint8[5] constant card_rank_indices = [41,26,19,10,5];
-    uint16[5] constant card_limits = [1551,1111,555,212,101];
-
-    uint256 public constant MINIMUM_STAKE_TIME = 3 days;
-    uint256[5][2] constant DAILY_MERGE_RATE = [[1,2],[3,4],[5,6],[7,8],[9,10]];
 
     struct Spell {
         SpellTypes spellType;
-        uint256 version;
         uint8 numCardsAffected;
-        Ranks rankAffected;
+        NFRTypes.Ranks rankAffected;
     }
 
     mapping(uint256 => Spell) public spells;
 
-    struct Stake {
-        uint80 stakeStart;
-        Ranks rank;
-        uint arrayIndex;
-        bool defended;
-    }
+    MERGE merge;
+    address NFRAddress;
+    bool NFRAddressSet;
 
-    mapping(uint256 => bool) public isStaked;
-    mapping(uint256 => Stake) public stakedPool;
-    uint256[5][] private stakedPoolIndices;
+    address BlackMarketAddress;
+    bool BlackMarketAddressSet;
+
+    uint16[3][7][5] public SPELL_MINT_PERCENT_CHANCE = [
+        //  F        D            C               B            A           S          SS
+        //1 2 3    1 2 3     1    2    3     1    2   3     1  2  3     1  2  3    1  2  3
+        [[uint16(0),0,0], [uint16(0),0,0], [uint16(250), 100,75], [uint16(150), 75, 50], [uint16(75),50,35], [uint16(50),25,20], [uint16(25),15,5]], // defend
+        [[uint16(0),0,0], [uint16(0),0,0], [uint16(250), 100,75], [uint16(150), 75, 50], [uint16(75),50,35], [uint16(50),25,20], [uint16(25),15,5]], // steal
+        [[uint16(0),0,0], [uint16(0),0,0], [uint16(350), 100, 50], [uint16(250), 50, 30], [uint16(50),30,10], [uint16(39),20,5], [uint16(10),5,1]],  // swap
+        [[uint16(0),0,0], [uint16(0),0,0], [uint16(350), 100, 50], [uint16(250), 50, 30], [uint16(55),30,10], [uint16(40),20,15], [uint16(0),0,0]],  // duplicate
+        [[uint16(0),0,0], [uint16(0),0,0], [uint16(450), 150, 100], [uint16(125),65,25], [uint16(50),25,10], [uint16(0),0,0], [uint16(0),0,0]]      // transform
+    ];
 
     uint256 private _nonce;
 
-    constructor(address _nfr, address _merge) {
-        nfr = NFR(_nfr);
+    constructor(address _merge) ERC721("Rare Relics", "RARERELICS"){
         merge = MERGE(_merge);
+        NFRAddressSet = false;
+        BlackMarketAddressSet = false;
     }
 
-    function useDefendSpell(uint256 spellTokenId, uint256[] relicTokenIds) external {
-        require (ownerOf(spellTokenId) == msg.sender, "MUST OWN SPELL TOKEN"); // must own spell card being used
-        Spell spell = spells[spellTokenId];
-        require (spells[spellTokenId].spellType == SpellTypes.DEFEND, "MUST INPUT DEFEND SPELL");
-        require (relicTokenIds.length <= spells[spellTokenId].numCardsAffected, "MORE CARDS DEFENDED THAN SPELL ALLOWS");
-
-        for (uint256 i = 0; i < relicTokenIds.length; i++) {
-            require (nfr.ownerOf(relicTokenIds[i]) == _msgSender(), "MUST OWN RELIC");
-            require (isStaked[relicTokenIds[i]] == true, "TOKEN NOT STAKED");
-            require (stakedPool[relicTokenIds[i]].rank == spell.rankAffected, "RANK DOESNT MATCH SPELL");
-        }
-
-        _burn(spellTokenId);
-
-        for (uint256 i = 0; i < relicTokenIds.length; i++) {
-            stakedPool[relicTokenIds[i]].defended = true;
-        }
+    function setNFRAddress(address _NFRAddress) external onlyOwner {
+        require (NFRAddressSet == false, "already set NFR contract address");
+        NFRAddress = _NFRAddress;
+        NFRAddressSet = true;
     }
 
-    function useStealSpell(uint256 spellTokenId) external returns(uint8){
-        require (ownerOf(spellTokenId) == msg.sender, "MUST OWN SPELL TOKEN"); // must own spell card being used
-        Spell spell = spells[spellTokenId];
-        require (spell.spellType == SpellTypes.STEAL, "MUST INPUT STEAL SPELL");
-        require (spell.numCardsAffected <= stakedPoolIndices[spell.rankAffected].length, "NOT ENOUGH CARDS IN STAKE POOL TO SPELL");
+    function setBlackMarketAddress(address _BlackMarketAddress) external onlyOwner {
+        require (BlackMarketAddressSet == false, "already set BlackMarket contract address");
+        BlackMarketAddress = _BlackMarketAddress;
+        BlackMarketAddressSet = true;
+    }
 
-        _burn(spellTokenId);
+    function useSpell(uint tokenID) external {
+        require(BlackMarketAddressSet == true, "BlackMarket contract address not set yet");
+        require(msg.sender == BlackMarketAddress, "Only BlackMarket contract can call this function");
+        _burn(tokenID);
+    }
 
-        uint8 cardsSuccessfullyStolen = 0;
-        for (uint i = 0; i < spell.numCardsAffected && stakedPoolIndices[spell.rankAffected].length > 0; i++) {
-            uint256 cardToSteal = random() % stakedPoolIndices[spell.rankAffected].length;
-            if (stakedPool[cardToSteal].defended){
-                // if card is defended then defense has been used
-                stakedPool[cardToSteal].defended = false;
+    function mintFromPack(address to) external {
+        require(NFRAddressSet == true, "NFR contract address not set yet");
+        require(msg.sender == NFRAddress, "Only NFR contract can call this function");
+        uint percentageChance = random() % 1000;
+        Spell memory newSpell;
+        if (percentageChance < 350) {
+            newSpell = getRandomSpellAttributes(SpellTypes.DEFEND);
+        }
+        else if (percentageChance < 700){
+            newSpell = getRandomSpellAttributes(SpellTypes.STEAL);
+        }
+        else if (percentageChance < 950){
+            newSpell = getRandomSpellAttributes(SpellTypes.SWAP);
+        }
+        else if (percentageChance < 995){
+            newSpell = getRandomSpellAttributes(SpellTypes.DUPLICATE);
+        }
+        else {
+            newSpell = getRandomSpellAttributes(SpellTypes.TRANSFORM);
+        }
+        _tokenIds.increment();
+        spells[_tokenIds.current()] = newSpell;
+        _safeMint(to, _tokenIds.current());
+    }
+
+    function mintFromStore(SpellTypes spellType) external payable {
+        Spell memory newSpell;
+        if (spellType == SpellTypes.DEFEND) {
+            newSpell = getRandomSpellAttributes(SpellTypes.DEFEND);
+            merge.burn(_msgSender(),10000);
+        }
+        else if (spellType == SpellTypes.STEAL){
+            newSpell = getRandomSpellAttributes(SpellTypes.STEAL);
+            merge.burn(_msgSender(),10000);
+        }
+        else if (spellType == SpellTypes.SWAP){
+            newSpell = getRandomSpellAttributes(SpellTypes.SWAP);
+            merge.burn(_msgSender(),10000);
+        }
+        else if (spellType == SpellTypes.DUPLICATE){
+            newSpell = getRandomSpellAttributes(SpellTypes.DUPLICATE);
+            merge.burn(_msgSender(),10000);
+        }
+        else {
+            newSpell = getRandomSpellAttributes(SpellTypes.TRANSFORM);
+            merge.burn(_msgSender(),10000);
+        }
+        _tokenIds.increment();
+        spells[_tokenIds.current()] = newSpell;
+        _safeMint(_msgSender(), _tokenIds.current());
+    }
+
+    function getRandomSpellAttributes(SpellTypes spellType) internal returns(Spell memory) {
+        uint randomPercentage = random() % 1000;
+        for (uint8 rankAffected = 0; rankAffected <= uint8(NFRTypes.Ranks.SS); rankAffected++) {
+            for (uint8 numCardsAffected = 1; numCardsAffected <= 3; numCardsAffected++ ) { // up to 3 num cards affected
+                if (randomPercentage < SPELL_MINT_PERCENT_CHANCE[uint8(spellType)][rankAffected][numCardsAffected-1]) {
+                   return Spell({
+                        spellType: spellType,
+                        numCardsAffected: numCardsAffected,
+                        rankAffected: NFRTypes.Ranks(1) // TODO: change back to rankAffected
+                   });
+                }
+                randomPercentage -= SPELL_MINT_PERCENT_CHANCE[uint8(spellType)][rankAffected][numCardsAffected-1];
             }
-            else {
-                nfr.stealCard(nfr.ownerOf(cardToSteal),_msgSender(),cardToSteal);
-                cardsSuccessfullyStolen++;
-            }
         }
-
-        return cardsSuccessfullyStolen;
-    }
-
-    function useSwapSpell(uint256 spellTokenId, uint256[] relicTokenIds) external returns(uint8){
-        require (ownerOf(spellTokenId) == msg.sender, "MUST OWN SPELL TOKEN"); // must own spell card being used
-        Spell spell = spells[spellTokenId];
-        require (spells[spellTokenId].spellType == SpellTypes.SWAP, "MUST INPUT DEFEND SPELL");
-        require (relicTokenIds.length <= spells[spellTokenId].numCardsAffected, "CANT SWAP MORE CARDS THAN SPELL ALLOWS");
-        require (relicTokenIds.length <= stakedPoolIndices[spell.rankAffected].length, "NOT ENOUGH CARDS IN STAKE POOL TO SWAP WITH");
-
-        for (uint256 i = 0; i < relicTokenIds.length; i++) {
-            require (nfr.ownerOf(relicTokenIds[i]) == _msgSender(), "MUST OWN RELIC");
-            require (isStaked[relicTokenIds[i]] == true, "TOKEN NOT STAKED");
-            require (stakedPool[relicTokenIds[i]].rank == spell.rankAffected, "RANK DOESNT MATCH SPELL");
-        }
-
-        _burn(spellTokenId);
-
-        uint8 cardsSuccessfullySwapped = 0;
-        for (uint256 i = 0; i < relicTokenIds.length; i++) {
-            uint256 cardToSteal = random() % stakedPoolIndices[spell.rankAffected].length;
-            if (stakedPool[cardToSteal].defended) {
-                // if card is defended then defense has been used
-                stakedPool[cardToSteal].defended = false;
-            }
-            else {
-                // random person steals the relic you put up
-                nfr.stealCard(_msgSender(), nfr.ownerOf(cardToSteal), relicTokenIds[i]);
-                // you steal the relic they put up
-                nfr.stealCard(nfr.ownerOf(cardToSteal),_msgSender(),cardToSteal);
-
-                cardsSuccessfullySwapped++;
-            }
-        }
-        return cardsSuccessfullySwapped;
-    }
-
-    function useDuplicateSpell(uint256 spellTokenId, uint256[] relicTokenIds) external {
-        require (ownerOf(spellTokenId) == msg.sender, "MUST OWN SPELL TOKEN"); // must own spell card being used
-        Spell spell = spells[spellTokenId];
-        require (spells[spellTokenId].spellType == SpellTypes.DUPLICATE, "MUST INPUT DUPLICATE SPELL");
-        require (relicTokenIds.length <= spells[spellTokenId].numCardsAffected, "MORE CARDS DUPLICATED THAN SPELL ALLOWS");
-
-        for (uint256 i = 0; i < relicTokenIds.length; i++) {
-            require (nfr.ownerOf(relicTokenIds[i]) == _msgSender(), "MUST OWN RELIC");
-            require (isStaked[relicTokenIds[i]] == true, "TOKEN NOT STAKED");
-            require (stakedPool[relicTokenIds[i]].rank == spell.rankAffected, "RANK DOESNT MATCH SPELL");
-        }
-
-        _burn(spellTokenId);
-
-        for (uint256 i = 0; i < relicTokenIds.length; i++) {
-            nfr.duplicateCard(relicTokenIds[i]);
-        }
-    }
-
-    function useTransformSpell(uint256 spellTokenId, uint256[] relicTokenIds) external {
-        require (ownerOf(spellTokenId) == msg.sender, "MUST OWN SPELL TOKEN"); // must own spell card being used
-        Spell spell = spells[spellTokenId];
-        require (spells[spellTokenId].spellType == SpellTypes.TRANSFORM, "MUST INPUT TRANSFORM SPELL");
-        require (relicTokenIds.length <= spells[spellTokenId].numCardsAffected, "CANT TRANSFORM MORE CARDS THAN SPELL ALLOWS");
-        require (relicTokenIds.length <= stakedPoolIndices[spell.rankAffected + 1].length, "NOT ENOUGH CARDS IN TRANSFORM TO");
-
-        for (uint256 i = 0; i < relicTokenIds.length; i++) {
-            require (nfr.ownerOf(relicTokenIds[i]) == _msgSender(), "MUST OWN RELIC");
-            require (isStaked[relicTokenIds[i]] == true, "TOKEN NOT STAKED");
-            require (stakedPool[relicTokenIds[i]].rank == spell.rankAffected, "RANK DOESNT MATCH SPELL");
-        }
-
-        _burn(spellTokenId);
-
-        for (uint256 i = 0; i < relicTokenIds.length; i++) {
-            uint256 cardToTransformTo = random() % stakedPoolIndices[spell.rankAffected+1].length;
-            nfr.transformCard(relicTokenIds[i], cardToTransformTo);
-        }
-    }
-
-    function stake(uint256 tokenId) external {
-        require(nfr.ownerOf(tokenId) == _msgSender(), "MUST OWN TOKEN");
-        require(isStaked[tokenId] == false, "TOKEN ALREADY STAKED");
-        uint8 relicNum = nfr.publicArtifacts(tokenId).num;
-        uint16 relicCopyNum = nfr.publicArtifacts(tokenId).copyNum;
-        require(relicNum != 0 && relicCopyNum != 0, "STAKED ITEM MUST BE REVEALED");
-        require(relicNum <= card_rank_indices[0], "CARD MUST BE RANK C OR HIGHER TO STAKE");
-        Ranks relicRank = getRank(relicNum);
-        stakedPoolIndices[relicRank].push(tokenId);
-
-        stakedPool[tokenId] = Stake({
-            stakeStart: uint80(block.timestamp),
-            rank: relicRank,
-            arrayIndex: stakedPoolIndices[relicRank].length - 1
-        });
-        isStaked[tokenId] = true;
-    }
-
-    function redeemMerge(uint256 tokenId, bool unstake) external {
-        require(nfr.ownerOf(tokenId) == _msgSender(), "MUST OWN TOKEN");
-        require(isStaked[tokenId] == true, "TOKEN NOT STAKED");
-
-        uint80 stakeStart = stakedPool[tokenId].stakeStart;
-        require(block.timestamp - stakeStart < MINIMUM_STAKE_TIME, "MUST STAKE FOR AT LEAST 3 DAYS");
-
-        if (unstake) {
-            unstake(tokenId);
-        }
-        // TODO: getMergeRate(rank,copyNum) function
-        merge.mint(_msgSender(), (block.timestamp - stakeStart) * DAILY_MERGE_RATE[relicRank] / 1 days);
-    }
-
-    function getRank(uint8 cardNum) internal returns (Ranks){
-        for (uint i = card_rank_indices.length; i > 0; i--){
-            if (cardNum <= card_rank_indices[i])
-                return i;
-        }
-        return 0;
-    }
-
-    function unstake(uint256 tokenId) internal {
-        require(isStaked[tokenId] == true, "TOKEN NOT STAKED");
-
-        Ranks stakeRank = stakedPool[tokenId].rank;
-        uint stakeIndex = stakedPool[tokenId].arrayIndex;
-
-        // get last element to fill in gap
-        uint lastElement = stakedPoolIndices[stakeRank].length - 1;
-        uint256 lastElementTokenId = stakedPoolIndices[stakeRank][lastElement];
-        // set the hole to be the last element
-        stakedPoolIndices[stakeRank][stakeIndex] = lastElementTokenId;
-        // make sure the stake information reflects the new position (the gap we just filled in)
-        stakedPool[lastElementTokenId].arrayIndex = stakeIndex;
-        // remove the last element from array now (it has been moved elsewhere)
-        stakedPoolIndices[stakeRank].length--;
-
-        // delete the stake instance corresponding to token we're unstaking
-        delete stakedPool[tokenId];
-        isStaked[tokenId] = false;
-
+        revert('Something went wrong getting a random number');
     }
 
     function random() internal returns(uint){
