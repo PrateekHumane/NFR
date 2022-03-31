@@ -96,7 +96,10 @@ contract NFR is ERC721Enumerable, Ownable  {
     function startGame() internal {
         gameOngoing = true;
         // 1024 bit preimage representing the hidden card amounts for cards other than baseCardCopyCounts
-        cardCopiesHashed = uint256(sha256(abi.encodePacked(uint256(0), uint256(0), uint256(0), uint256(0))));
+        // cardCopiesHashed = uint256(sha256(abi.encodePacked(uint256(0), uint256(0), uint256(0), uint256(0))));
+        // this is the pedersen hash for uint256(0)
+        // all non base cards counts are 0 when the game starts
+        cardCopiesHashed = 0xa65f3fa0002aba81ad5f5805158ca53b4c6786ad9dc9845a0acbd5e718ffe95d;
     }
 
     function revealArtifact(uint256 tokenId, uint8 num, uint16 copyNum, uint256 longDescriptionHashed, uint256 privateKey) external {
