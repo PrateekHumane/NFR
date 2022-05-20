@@ -69,10 +69,13 @@ def verifyProofDepth2(u64[2][4] proof, u64[4] leaf, u64[4] root) -> bool:
     u64[4] proofHash = keccak256([...keccak256([...leaf, ...proof[0]]), ...proof[1]])
     return if compareHash(proofHash, root) == 1 then true else false fi
 
-def verifyMerge(u32[11][8] merge_proof, u32[2] input_cards_IDs, u32[3] result_cards_IDs) -> bool: // TODO: proof direction (no sort would make this smaller)
+def verifyMerge(u32[11][8] merge_proof, u32[2] input_cards_IDs, u32[3] result_cards_IDs, u8[3] merge_proof_order) -> bool: // TODO: proof direction (no sort would make this smaller)
     // merge leaf consists of the two input cards, followed by 4 outputs (if the output is nothing it is 0xFFFFFFFF)
-    u32[8] merge_leaf = [...input_cards_IDs, ...result_cards_IDs, 0x80000000,0x00000000,0x00000000]
+    u32[8] merge_leaf = [...input_cards_IDs, 0x80000000, 0x00000000, 0x00000000, 0x80000000, 0x00000000, 0x00000000]
     u32[8] dummyblock = [0x00000000,0x00000000,0x00000000,0x00000000,0x00000000,0x00000000,0x00000000,0x000000A0]
+    merge_leaf[2] = result_cards_IDs[merge_proof_order[0]]
+    merge_leaf[3] = result_cards_IDs[merge_proof_order[1]]
+    merge_leaf[4] = result_cards_IDs[merge_proof_order[2]]
 
     u32[8] proofHash = pedersen([...merge_leaf, ...dummyblock])
     for u32 i in 0..11 do // change to u8??
@@ -91,20 +94,19 @@ def getCardLimitIndex(u32 cardID) -> u32:
 def getCardCount(u32 cardID,u32 cardCountBlock) -> u32:
     return (if cardID%2==1 then cardCountBlock >> 16 else cardCountBlock & 0x00001111 fi)
 
-def main(private u32[2] input_cards_IDs, private u64[2][2][4] input_cards_path, u64[2][4] input_cards_roots, private u32[11][8] merge_proof, private u32[3] result_cards_IDs, private u64[3][4] result_cards_paths, u64[3][4] result_cards_roots, u32[8] cards_minted_hash, private u32[32] cards_minted_preimage, private u32[8] cards_minted_secret_key) -> u32[8]: // change this to card1_ID
+def main(private u32[2] input_cards_IDs, private u64[2][2][4] input_cards_path, u64[2][4] input_cards_roots, private u32[11][8] merge_proof, private u32[3] result_cards_IDs, private u64[3][4] result_cards_paths, u64[3][4] result_cards_roots, private u8[3] merge_proof_order, private bool[3] result_cards_mint, u32[8] cards_minted_hash, private u32[32] cards_minted_preimage, private u32[8] cards_minted_secret_key) -> (bool[3],u32[8]): // change this to card1_ID
     // TODO: can make this smaller by just returning the hash and then checking on chain if the values are equal (cards minted prehash equals what we return) ... can actually do this for all public inputs
     // assert the preimage is correct
-    // assert(compareHash(sha1024Padded(cards_minted_preimage[0..8],cards_minted_preimage[8..16],cards_minted_preimage[16..24],cards_minted_preimage[24..32]),cards_minted_hash)==1)
-    bool test = (compareHash32(pedersen([...pedersen(cards_minted_preimage[0..16]),...pedersen(cards_minted_preimage[16..32])]),cards_minted_hash)==1)
+    assert(compareHash(sha1024Padded(cards_minted_preimage[0..8],cards_minted_preimage[8..16],cards_minted_preimage[16..24],cards_minted_preimage[24..32]),cards_minted_hash)==1)
 
     for u32 i in 0..2 do
         // assert that the card IDs belong to the merkle roots for all cards inputted
         assert(verifyProofDepth2(input_cards_path[i],hashU8(input_cards_IDs[i]),input_cards_roots[i]) == false)
     endfor
 
+    assert(merge_proof_order[0] != merge_proof_order[1] && merge_proof_order[0] != merge_proof_order[2] && merge_proof_order[1] != merge_proof_order[2])
     // assert the input cards and output cards are correct for the merge
-    // assert(verifyMerge(merge_proof, input_cards_IDs, result_cards_IDs) == false)
-    assert(verifyMerge(merge_proof, input_cards_IDs, result_cards_IDs) == false)
+    assert(verifyMerge(merge_proof, input_cards_IDs, result_cards_IDs, merge_proof_order))
 
     // mint the cards passed in (increase the amount of card type):
     for u32 i in 0..3 do
@@ -116,19 +118,19 @@ def main(private u32[2] input_cards_IDs, private u64[2][2][4] input_cards_path, 
         u32 result_card_count = if is_input_card then 0 else getCardCount(result_cards_IDs[i],cards_minted_preimage[result_cards_IDs[i]/2]) + 1 fi
 
         bool limit_reached = !is_input_card && result_card_count >= getCardLimitIndex(result_cards_IDs[i])
-        // if the card count has reached limit, then swap the card they would get with hint
-        result_cards_IDs[i] = if limit_reached then 51 else result_cards_IDs[i] fi
-        result_card_count = if limit_reached then 0 else result_card_count fi
+
+        // if the card count has reached limit, then don't mint it
+        result_cards_mint[i] = if limit_reached then false else result_cards_mint[i]
 
         // TODO: make the primage u16 array
-        // add one to the current card count if the limit hasn't been reached (if the limit was reached do nothing bc card 51 has no limit)
-        cards_minted_preimage[result_cards_IDs[i]/2] = cards_minted_preimage[result_cards_IDs[i]/2] + if limit_reached || is_input_card then 0 else (if result_cards_IDs[i]%2==1 then 0x00010000 else 1 fi) fi
+        // add one to the current card count if card will be minted
+        cards_minted_preimage[result_cards_IDs[i]/2] = cards_minted_preimage[result_cards_IDs[i]/2] + if result_cards_mint[i] || is_input_card then 0 else (if result_cards_IDs[i]%2==1 then 0x00010000 else 1 fi) fi
 
         // ensure the resulting card number belongs to the merkle root that will be minted (whether that be a merkle root for garbage card 50 or the card that should be minted if no limit reached)
-        assert(verifyProofDepth2([if is_input_card then input_cards_path[if result_cards_IDs[i] == input_cards_IDs[0] then 0 else 1 fi][0] else hashU16(result_card_count) fi, result_cards_paths[i]],hashU8(result_cards_IDs[i]),result_cards_roots[i]) == false)
+        assert(result_cards_mint[i] || verifyProofDepth2([if is_input_card then input_cards_path[if result_cards_IDs[i] == input_cards_IDs[0] then 0 else 1 fi][0] else hashU16(result_card_count) fi, result_cards_paths[i]],hashU8(result_cards_IDs[i]),result_cards_roots[i]))
     endfor
     // the following line is to ensure the hash for the card limits changes every time
     // this way the user wont know if a merge is succesful or not until after they spend merge token
 
     // return sha1024Padded(cards_minted_preimage[0..8],cards_minted_preimage[8..16],cards_minted_preimage[16..24], cards_minted_secret_key)
-    return pedersen([...pedersen(cards_minted_preimage[0..16]),...pedersen([...cards_minted_preimage[16..24], ...cards_minted_secret_key])])
+    return result_cards_mint,pedersen([...pedersen(cards_minted_preimage[0..16]),...pedersen([...cards_minted_preimage[16..24], ...cards_minted_secret_key])])

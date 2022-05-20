@@ -143,7 +143,7 @@ library Pairing {
     }
 }
 
-contract Verifier {
+contract MergeZKP {
     using Pairing for *;
     struct VerifyingKey {
         Pairing.G1Point alpha;
