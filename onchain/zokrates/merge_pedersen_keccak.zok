@@ -33,7 +33,7 @@ def compareHash(u64[4] hash1, u64[4] hash2) -> u8:
     endfor
     return result
 
-def compareHash32(u32[8] hash1, u32[8] hash2) -> u8:
+def compareHash(u32[8] hash1, u32[8] hash2) -> u8:
     u8 result = 1
     for u32 i in 0..8 do
         result = if hash1[7-i] == hash2[7-i] then result else if hash1[7-i] < hash2[7-i] then 0 else 2 fi fi
@@ -69,19 +69,16 @@ def verifyProofDepth2(u64[2][4] proof, u64[4] leaf, u64[4] root) -> bool:
     u64[4] proofHash = keccak256([...keccak256([...leaf, ...proof[0]]), ...proof[1]])
     return if compareHash(proofHash, root) == 1 then true else false fi
 
-def verifyMerge(u32[11][8] merge_proof, u32[2] input_cards_IDs, u32[3] result_cards_IDs, u8[3] merge_proof_order) -> bool: // TODO: proof direction (no sort would make this smaller)
+def verifyMerge(u32[11][8] merge_proof, u32[2] input_cards_IDs, u32[3] result_cards_IDs, u32[5] merge_proof_order) -> bool: // TODO: proof direction (no sort would make this smaller)
     // merge leaf consists of the two input cards, followed by 4 outputs (if the output is nothing it is 0xFFFFFFFF)
-    u32[8] merge_leaf = [...input_cards_IDs, 0x80000000, 0x00000000, 0x00000000, 0x80000000, 0x00000000, 0x00000000]
+    u32[8] merge_leaf = [input_cards_IDs[merge_proof_order[0]], input_cards_IDs[merge_proof_order[1]], result_cards_IDs[merge_proof_order[2]], result_cards_IDs[merge_proof_order[3]], result_cards_IDs[merge_proof_order[4]], 0x00000000, 0x80000000, 0x00000000]
     u32[8] dummyblock = [0x00000000,0x00000000,0x00000000,0x00000000,0x00000000,0x00000000,0x00000000,0x000000A0]
-    merge_leaf[2] = result_cards_IDs[merge_proof_order[0]]
-    merge_leaf[3] = result_cards_IDs[merge_proof_order[1]]
-    merge_leaf[4] = result_cards_IDs[merge_proof_order[2]]
 
     u32[8] proofHash = pedersen([...merge_leaf, ...dummyblock])
     for u32 i in 0..11 do // change to u8??
-        proofHash = if compareHash32(proofHash, merge_proof[i]) == 0 then pedersen([...proofHash, ...merge_proof[i]]) else pedersen([...merge_proof[i], ...proofHash]) fi
+        proofHash = if compareHash(proofHash, merge_proof[i]) == 0 then pedersen([...proofHash, ...merge_proof[i]]) else pedersen([...merge_proof[i], ...proofHash]) fi
     endfor
-    return if compareHash32(proofHash, merge_root) == 1 then true else false fi
+    return if compareHash(proofHash, merge_root) == 1 then true else false fi
 
 
 def getCardLimitIndex(u32 cardID) -> u32:
@@ -94,7 +91,7 @@ def getCardLimitIndex(u32 cardID) -> u32:
 def getCardCount(u32 cardID,u32 cardCountBlock) -> u32:
     return (if cardID%2==1 then cardCountBlock >> 16 else cardCountBlock & 0x00001111 fi)
 
-def main(private u32[2] input_cards_IDs, private u64[2][2][4] input_cards_path, u64[2][4] input_cards_roots, private u32[11][8] merge_proof, private u32[3] result_cards_IDs, private u64[3][4] result_cards_paths, u64[3][4] result_cards_roots, private u8[3] merge_proof_order, private bool[3] result_cards_mint, u32[8] cards_minted_hash, private u32[32] cards_minted_preimage, private u32[8] cards_minted_secret_key) -> (bool[3],u32[8]): // change this to card1_ID
+def main(private u32[2] input_cards_IDs, private u64[2][2][4] input_cards_path, u64[2][4] input_cards_roots, private u32[11][8] merge_proof, private u32[3] result_cards_IDs, private u64[3][4] result_cards_paths, u64[3][4] result_cards_roots, private u32[5] merge_proof_order, private bool[3] result_cards_mint, u32[8] cards_minted_hash, private u32[32] cards_minted_preimage, private u32[8] cards_minted_secret_key) -> (bool[3],u32[8]): // change this to card1_ID
     // TODO: can make this smaller by just returning the hash and then checking on chain if the values are equal (cards minted prehash equals what we return) ... can actually do this for all public inputs
     // assert the preimage is correct
     assert(compareHash(sha1024Padded(cards_minted_preimage[0..8],cards_minted_preimage[8..16],cards_minted_preimage[16..24],cards_minted_preimage[24..32]),cards_minted_hash)==1)
@@ -104,7 +101,7 @@ def main(private u32[2] input_cards_IDs, private u64[2][2][4] input_cards_path, 
         assert(verifyProofDepth2(input_cards_path[i],hashU8(input_cards_IDs[i]),input_cards_roots[i]) == false)
     endfor
 
-    assert(merge_proof_order[0] != merge_proof_order[1] && merge_proof_order[0] != merge_proof_order[2] && merge_proof_order[1] != merge_proof_order[2])
+    assert(merge_proof_order[0] != merge_proof_order[1] && merge_proof_order[2] != merge_proof_order[3] && merge_proof_order[2] != merge_proof_order[4] && merge_proof_order[3] != merge_proof_order[4])
     // assert the input cards and output cards are correct for the merge
     assert(verifyMerge(merge_proof, input_cards_IDs, result_cards_IDs, merge_proof_order))
 
@@ -120,7 +117,7 @@ def main(private u32[2] input_cards_IDs, private u64[2][2][4] input_cards_path, 
         bool limit_reached = !is_input_card && result_card_count >= getCardLimitIndex(result_cards_IDs[i])
 
         // if the card count has reached limit, then don't mint it
-        result_cards_mint[i] = if limit_reached then false else result_cards_mint[i]
+        result_cards_mint[i] = if limit_reached then false else result_cards_mint[i] fi
 
         // TODO: make the primage u16 array
         // add one to the current card count if card will be minted

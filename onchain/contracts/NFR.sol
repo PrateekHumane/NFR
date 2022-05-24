@@ -63,7 +63,7 @@ contract NFR is ERC721Enumerable, Ownable  {
         BlackMarketAddressSet = false;
     }
 
-    function mintPack(uint8 artifact1, uint8 artifact2, uint8 artifact3) external payable returns (uint256[4] memory){
+    function mintPack(uint8 artifact1, uint8 artifact2, uint8 artifact3, uint8 artifact4) external payable returns (uint256[4] memory){
         // TODO: comment back in after testing
         //        require(msg.value >= MINT_PRICE);
         require(packsMinted < MAX_MINTABLE, "MAX PACKS MINTED");
@@ -71,9 +71,10 @@ contract NFR is ERC721Enumerable, Ownable  {
         require(artifact1 <= 50 && artifact1 >= 42, "CAN ONLY REQUEST BASE CARD");
         require(artifact2 <= 50 && artifact2 >= 42, "CAN ONLY REQUEST BASE CARD");
         require(artifact3 <= 50 && artifact3 >= 42, "CAN ONLY REQUEST BASE CARD");
+        require(artifact4 <= 50 && artifact4 >= 42, "CAN ONLY REQUEST BASE CARD");
 
         // additional card based on when you mint the pack
-        uint8[4] memory artifactNums = [artifact1, artifact2, artifact3, uint8(packsMinted % 9 + 42)];
+        uint8[4] memory artifactNums = [artifact1, artifact2, artifact3, artifact4];
         uint256[4] memory results;
         for (uint i = 0; i < 4; i++) {
             Artifact memory artifactToMint;
@@ -122,23 +123,23 @@ contract NFR is ERC721Enumerable, Ownable  {
         // require(msg.value >= 0.002);
         merge.burn(msg.sender, 1 ether);
 
-        uint256 id = sha3(tokenId1, tokenId2);
-        mergeQueue[id] = MergeInfo(0,tokenId1,tokenId2);
+        uint256 mergeId = uint256(keccak256(abi.encodePacked(tokenId1, tokenId2)));
+        mergeQueue[mergeId] = MergeInfo(0,tokenId1,tokenId2);
         if (mergeQueueLength > 0)
-            mergeQueue[rear].nextMerge = id;
-        rear = id;
+            mergeQueue[rear].nextMerge = mergeId;
+        rear = mergeId;
 
         mergeQueueLength++;
 
-        AddMerge(id, tokenId1, tokenId2);
+        emit AddMerge(mergeId, tokenId1, tokenId2);
     }
 
-    function processMerge(MergeZKP.Proof memory proof, uint[12] memory resultCardRoots, bool memory resultCardsMint, uint[8] newCardCopiesHashed) external onlyOwner {
+    function processMerge(MergeZKP.Proof memory proof, uint[12] memory resultCardRoots, bool[3] memory resultCardsMint, uint[8] memory newCardCopiesHashed) external onlyOwner {
         require (mergeQueueLength > 0, "No merges in queue");
-        uint256 merge = front;
+        uint256 nextMerge = head;
 
-        uint256 tokenId1 = mergeQueue[merge].tokenId1;
-        uint256 tokenId2 = mergeQueue[merge].tokenId2;
+        uint256 tokenId1 = mergeQueue[nextMerge].tokenId1;
+        uint256 tokenId2 = mergeQueue[nextMerge].tokenId2;
         require(ownerOf(tokenId1) == ownerOf(tokenId2), "must own both tokens still");
 
         // check the merge zero knowledge proof
@@ -146,11 +147,11 @@ contract NFR is ERC721Enumerable, Ownable  {
 
         // convert tokenId1 into 4  64 bit uints
         for (uint i = 0; i < 4; i++) {
-            zkpInput[i] = tokenId1 && (0x11111111 << (3-i)*64);
+            zkpInput[i] = tokenId1 & (0x11111111 << (3-i)*64);
         }
         // convert tokenId2 into 4  64 bit uints
         for (uint i = 0; i < 4; i++) {
-            zkpInput[4+i] = tokenId2 && (0x11111111 << (3-i)*64);
+            zkpInput[4+i] = tokenId2 & (0x11111111 << (3-i)*64);
         }
         // fill the rest in with input
         for (uint i = 0; i < 12; i++) {
@@ -158,7 +159,7 @@ contract NFR is ERC721Enumerable, Ownable  {
         }
         // convert copy counts hashed into 8 u32 ints
         for (uint i = 0; i < 8; i++) {
-            zkpInput[20+i] = cardCopiesHashed && (0x1111 << (7-i)*32);
+            zkpInput[20+i] = cardCopiesHashed & (0x1111 << (7-i)*32);
         }
         // convert bool of whether or not to mint to uint
         for (uint i = 0; i < 3; i++) {
@@ -170,7 +171,7 @@ contract NFR is ERC721Enumerable, Ownable  {
         }
 
         // verifying zero knowledge proof showing this is a fair merge
-        require(MergeZKP.verifyTx(proof,zkpInput), "Zero Knowledge Proof Failed");
+        require(mergeZKP.verifyTx(proof,zkpInput), "Zero Knowledge Proof Failed");
 
         _burn(tokenId1);
         _burn(tokenId2);
@@ -179,15 +180,15 @@ contract NFR is ERC721Enumerable, Ownable  {
           // if we are supposed to mint the relic
           if (resultCardsMint[i]) {
               // mint the corresponding token
-              _safeMint(ownerOf(tokenId1), convert64bitTo256bit(input[(8+i*4):(12+i*4)]));
+              _safeMint(ownerOf(tokenId1), convert64bitTo256bit([resultCardRoots[i*4], resultCardRoots[i*4+1], resultCardRoots[i*4+2], resultCardRoots[i*4+3]]));
           }
         }
 
         cardCopiesHashed = convert32bitTo256bit(newCardCopiesHashed);
 
         // pop merge from queue
-        front = mergeQueue[merge].nextMerge;
-        delete mergeQueue[merge];
+        head = mergeQueue[nextMerge].nextMerge;
+        delete mergeQueue[nextMerge];
         mergeQueueLength--;
     }
 
@@ -226,7 +227,7 @@ contract NFR is ERC721Enumerable, Ownable  {
     }
 
     function getArtifactMerkleRoot(Artifact memory artifact) internal pure returns (uint256){
-        return uint256(sha256(abi.encodePacked(sha256(abi.encodePacked(sha256(abi.encodePacked(artifact.num)), sha256(abi.encodePacked(artifact.copyNum)))), sha256(abi.encodePacked(abi.encodePacked(artifact.longDescriptionHashed), sha256(abi.encodePacked(artifact.privateKey)))))));
+        return uint256(keccak256(abi.encodePacked(keccak256(abi.encodePacked(keccak256(abi.encodePacked(artifact.num)), keccak256(abi.encodePacked(artifact.copyNum)))), keccak256(abi.encodePacked(abi.encodePacked(artifact.longDescriptionHashed), keccak256(abi.encodePacked(artifact.privateKey)))))));
     }
 
     event cardStolen(address from, address to, uint256 tokenId);
@@ -310,15 +311,15 @@ contract NFR is ERC721Enumerable, Ownable  {
     //        _safeMint(msg.sender,card3);
     //    }
 
-    function convert64bitTo256bit(uint[4] memory inputArray) internal {
-        uint result = 0;
+    function convert64bitTo256bit(uint[4] memory inputArray) internal pure returns(uint256){
+        uint256 result = 0;
         for (uint8 i = 0; i < 4; i++)
             result += inputArray[3 - i] << (64 * i);
         return result;
     }
 
-    function convert32bitTo256bit(uint[8] memory inputArray) internal {
-        uint result = 0;
+    function convert32bitTo256bit(uint[8] memory inputArray) internal pure returns(uint256){
+        uint256 result = 0;
         for (uint8 i = 0; i < 8; i++)
             result += inputArray[7 - i] << (32 * i);
         return result;

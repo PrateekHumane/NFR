@@ -19,7 +19,7 @@ console.log(splitInto8(merkleTree.getRoot().toString('hex')));
 
 console.log(merges.length);
 
-const merge1 = Buffer.from('0000002E0000002F0000002E0000002F00000028','hex');
+const merge1 = Buffer.from('0000002F000000310000002F0000003100000026','hex');
 // const merge1 = Buffer.from("0000000100000002000000010000000200000033",'hex');
 console.log(merge1.toString('hex'))
 const mergeLeaf = SHA256(CryptoJS.enc.Hex.parse(merge1.toString('hex'))).toString();

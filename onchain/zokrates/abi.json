@@ -88,6 +88,24 @@
       }
     },
     {
+      "name": "merge_proof_order",
+      "public": false,
+      "type": "array",
+      "components": {
+        "size": 5,
+        "type": "u32"
+      }
+    },
+    {
+      "name": "result_cards_mint",
+      "public": false,
+      "type": "array",
+      "components": {
+        "size": 3,
+        "type": "bool"
+      }
+    },
+    {
       "name": "cards_minted_hash",
       "public": true,
       "type": "array",
@@ -116,6 +134,13 @@
     }
   ],
   "outputs": [
+    {
+      "type": "array",
+      "components": {
+        "size": 3,
+        "type": "bool"
+      }
+    },
     {
       "type": "array",
       "components": {
