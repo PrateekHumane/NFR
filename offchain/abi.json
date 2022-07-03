@@ -1,0 +1,151 @@
+{
+  "inputs": [
+    {
+      "name": "input_cards_IDs",
+      "public": false,
+      "type": "array",
+      "components": {
+        "size": 2,
+        "type": "u32"
+      }
+    },
+    {
+      "name": "input_cards_copy_counts",
+      "public": false,
+      "type": "array",
+      "components": {
+        "size": 2,
+        "type": "u32"
+      }
+    },
+    {
+      "name": "input_cards_path",
+      "public": false,
+      "type": "array",
+      "components": {
+        "size": 2,
+        "type": "array",
+        "components": {
+          "size": 4,
+          "type": "u64"
+        }
+      }
+    },
+    {
+      "name": "merge_proof",
+      "public": false,
+      "type": "array",
+      "components": {
+        "size": 11,
+        "type": "array",
+        "components": {
+          "size": 8,
+          "type": "u32"
+        }
+      }
+    },
+    {
+      "name": "result_cards_IDs",
+      "public": false,
+      "type": "array",
+      "components": {
+        "size": 3,
+        "type": "u32"
+      }
+    },
+    {
+      "name": "result_cards_paths",
+      "public": false,
+      "type": "array",
+      "components": {
+        "size": 3,
+        "type": "array",
+        "components": {
+          "size": 4,
+          "type": "u64"
+        }
+      }
+    },
+    {
+      "name": "merge_proof_order",
+      "public": false,
+      "type": "array",
+      "components": {
+        "size": 3,
+        "type": "u32"
+      }
+    },
+    {
+      "name": "cards_minted_preimage",
+      "public": false,
+      "type": "array",
+      "components": {
+        "size": 51,
+        "type": "u16"
+      }
+    },
+    {
+      "name": "cards_minted_secret_key",
+      "public": false,
+      "type": "array",
+      "components": {
+        "size": 368,
+        "type": "bool"
+      }
+    },
+    {
+      "name": "new_cards_minted_secret_key",
+      "public": false,
+      "type": "array",
+      "components": {
+        "size": 368,
+        "type": "bool"
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "type": "array",
+      "components": {
+        "size": 4,
+        "type": "u64"
+      }
+    },
+    {
+      "type": "array",
+      "components": {
+        "size": 2,
+        "type": "array",
+        "components": {
+          "size": 4,
+          "type": "u64"
+        }
+      }
+    },
+    {
+      "type": "array",
+      "components": {
+        "size": 3,
+        "type": "array",
+        "components": {
+          "size": 4,
+          "type": "u64"
+        }
+      }
+    },
+    {
+      "type": "array",
+      "components": {
+        "size": 3,
+        "type": "bool"
+      }
+    },
+    {
+      "type": "array",
+      "components": {
+        "size": 4,
+        "type": "u64"
+      }
+    }
+  ]
+}

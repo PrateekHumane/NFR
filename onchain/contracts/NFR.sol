@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 //import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "./MERGE.sol";
 import "./RareRelics.sol";
-import "./MergeZKP.sol";
 
 contract NFR is ERC721Enumerable, Ownable  {
 
@@ -21,7 +20,7 @@ contract NFR is ERC721Enumerable, Ownable  {
     // if we need more info than merkleRoot per card, then create a struct that the ID maps to
     // map from hiddenCardId -> merkleRoot
     uint16[9] public baseCardCopyCounts = [0, 0, 0, 0, 0, 0, 0, 0, 0];
-    uint256[9] public baseCardHashedDescription = [0x01649792131254809c4b0f4287aaeb9a5229812249af54b3a86c8dcfecda625a, 0, 0, 0, 0, 0, 0, 0, 0];
+    uint256[9] public baseCardHashedDescription = [0x01649792131254809c4b0f4287aaeb9a5229812249af54b3a86c8dcfecda625a, 4, 5, 6, 7, 0, 1, 2, 3];
 
     struct Artifact {
         uint8 num;
@@ -47,34 +46,32 @@ contract NFR is ERC721Enumerable, Ownable  {
 
     MERGE merge;
     RareRelics rareRelics;
-    MergeZKP mergeZKP;
 
     address BlackMarketAddress;
     bool BlackMarketAddressSet;
 
+    address MergerAddress;
+    bool MergerAddressSet;
+
     uint256 private _nonce;
 
-    constructor(address _merge, address _rareRelics, address _mergeZKP) ERC721("NFR island", "NFR") {
+    constructor(address _merge, address _rareRelics) ERC721("NFR island", "NFR") {
         packsMinted = 0;
         gameOngoing = false;
         merge = MERGE(_merge);
         rareRelics = RareRelics(_rareRelics);
-        mergeZKP = MergeZKP(_mergeZKP);
         BlackMarketAddressSet = false;
+        MergerAddressSet = false;
     }
 
-    function mintPack(uint8 artifact1, uint8 artifact2, uint8 artifact3, uint8 artifact4) external payable returns (uint256[4] memory){
+    function mintPack(uint8[4] memory artifactNums) external payable returns (uint256[4] memory){
         // TODO: comment back in after testing
         //        require(msg.value >= MINT_PRICE);
         require(packsMinted < MAX_MINTABLE, "MAX PACKS MINTED");
-        // three cards decided must be base cards
-        require(artifact1 <= 50 && artifact1 >= 42, "CAN ONLY REQUEST BASE CARD");
-        require(artifact2 <= 50 && artifact2 >= 42, "CAN ONLY REQUEST BASE CARD");
-        require(artifact3 <= 50 && artifact3 >= 42, "CAN ONLY REQUEST BASE CARD");
-        require(artifact4 <= 50 && artifact4 >= 42, "CAN ONLY REQUEST BASE CARD");
+        // cards decided must be base cards
+        for (uint8 a = 0; a < 4; a++)
+            require(artifactNums[a] <= 50 && artifactNums[a] >= 42, "CAN ONLY REQUEST BASE CARD");
 
-        // additional card based on when you mint the pack
-        uint8[4] memory artifactNums = [artifact1, artifact2, artifact3, artifact4];
         uint256[4] memory results;
         for (uint i = 0; i < 4; i++) {
             Artifact memory artifactToMint;
@@ -94,9 +91,9 @@ contract NFR is ERC721Enumerable, Ownable  {
         }
 
         // allow black market to control these tokens for when you stake
-        setApprovalForAll(BlackMarketAddress, true);
+        setApprovalForAll(BlackMarketAddress, true); // TODO: why call this every time?
         rareRelics.mintFromPack(msg.sender);
-        merge.mint(msg.sender, 5000000);
+        merge.mint(msg.sender, 5 ether);
 
         packsMinted += 1;
 
@@ -109,87 +106,7 @@ contract NFR is ERC721Enumerable, Ownable  {
 
     function startGame() internal {
         gameOngoing = true;
-        // 1024 bit preimage representing the hidden card amounts for cards other than baseCardCopyCounts
-        // cardCopiesHashed = uint256(sha256(abi.encodePacked(uint256(0), uint256(0), uint256(0), uint256(0))));
-        // this is the pedersen hash for uint256(0)
-        // all non base cards counts are 0 when the game starts
-        cardCopiesHashed = 0xa65f3fa0002aba81ad5f5805158ca53b4c6786ad9dc9845a0acbd5e718ffe95d;
-    }
 
-    event AddMerge(uint256 mergeId, uint256 tokenId1, uint256 tokenId2);
-    function requestMerge(uint256 tokenId1, uint256 tokenId2) external {
-        require(ownerOf(tokenId1) == msg.sender && ownerOf(tokenId2) == msg.sender, "You must own the tokens");
-        require(tokenId1 != tokenId2, "Enter two different tokens");
-        // require(msg.value >= 0.002);
-        merge.burn(msg.sender, 1 ether);
-
-        uint256 mergeId = uint256(keccak256(abi.encodePacked(tokenId1, tokenId2)));
-        mergeQueue[mergeId] = MergeInfo(0,tokenId1,tokenId2);
-        if (mergeQueueLength > 0)
-            mergeQueue[rear].nextMerge = mergeId;
-        rear = mergeId;
-
-        mergeQueueLength++;
-
-        emit AddMerge(mergeId, tokenId1, tokenId2);
-    }
-
-    function processMerge(MergeZKP.Proof memory proof, uint[12] memory resultCardRoots, bool[3] memory resultCardsMint, uint[8] memory newCardCopiesHashed) external onlyOwner {
-        require (mergeQueueLength > 0, "No merges in queue");
-        uint256 nextMerge = head;
-
-        uint256 tokenId1 = mergeQueue[nextMerge].tokenId1;
-        uint256 tokenId2 = mergeQueue[nextMerge].tokenId2;
-        require(ownerOf(tokenId1) == ownerOf(tokenId2), "must own both tokens still");
-
-        // check the merge zero knowledge proof
-        uint[39] memory zkpInput;
-
-        // convert tokenId1 into 4  64 bit uints
-        for (uint i = 0; i < 4; i++) {
-            zkpInput[i] = tokenId1 & (0x11111111 << (3-i)*64);
-        }
-        // convert tokenId2 into 4  64 bit uints
-        for (uint i = 0; i < 4; i++) {
-            zkpInput[4+i] = tokenId2 & (0x11111111 << (3-i)*64);
-        }
-        // fill the rest in with input
-        for (uint i = 0; i < 12; i++) {
-            zkpInput[8+i] = resultCardRoots[i];
-        }
-        // convert copy counts hashed into 8 u32 ints
-        for (uint i = 0; i < 8; i++) {
-            zkpInput[20+i] = cardCopiesHashed & (0x1111 << (7-i)*32);
-        }
-        // convert bool of whether or not to mint to uint
-        for (uint i = 0; i < 3; i++) {
-            zkpInput[28+i] = resultCardsMint[i] ? 1: 0;
-        }
-        // add in the new card copy counts to zkp input
-        for (uint i = 0; i < 8; i++) {
-            zkpInput[31+i] = newCardCopiesHashed[i];
-        }
-
-        // verifying zero knowledge proof showing this is a fair merge
-        require(mergeZKP.verifyTx(proof,zkpInput), "Zero Knowledge Proof Failed");
-
-        _burn(tokenId1);
-        _burn(tokenId2);
-
-        for (uint i = 0; i < 3; i++) {
-          // if we are supposed to mint the relic
-          if (resultCardsMint[i]) {
-              // mint the corresponding token
-              _safeMint(ownerOf(tokenId1), convert64bitTo256bit([resultCardRoots[i*4], resultCardRoots[i*4+1], resultCardRoots[i*4+2], resultCardRoots[i*4+3]]));
-          }
-        }
-
-        cardCopiesHashed = convert32bitTo256bit(newCardCopiesHashed);
-
-        // pop merge from queue
-        head = mergeQueue[nextMerge].nextMerge;
-        delete mergeQueue[nextMerge];
-        mergeQueueLength--;
     }
 
     function revealArtifact(uint256 tokenId, uint8 num, uint16 copyNum, uint256 longDescriptionHashed, uint256 privateKey) external {
@@ -227,7 +144,10 @@ contract NFR is ERC721Enumerable, Ownable  {
     }
 
     function getArtifactMerkleRoot(Artifact memory artifact) internal pure returns (uint256){
-        return uint256(keccak256(abi.encodePacked(keccak256(abi.encodePacked(keccak256(abi.encodePacked(artifact.num)), keccak256(abi.encodePacked(artifact.copyNum)))), keccak256(abi.encodePacked(abi.encodePacked(artifact.longDescriptionHashed), keccak256(abi.encodePacked(artifact.privateKey)))))));
+        uint256 hash1 = uint256(keccak256(abi.encodePacked(keccak256(abi.encodePacked(artifact.num)), keccak256(abi.encodePacked(artifact.copyNum)))));
+        uint256 hash2 = uint256(keccak256(abi.encodePacked(keccak256(abi.encodePacked(artifact.longDescriptionHashed)), keccak256(abi.encodePacked(artifact.privateKey)))));
+        return uint256(keccak256(abi.encodePacked(hash1,hash2)));
+//        return uint256(keccak256(abi.encodePacked(keccak256(abi.encodePacked(keccak256(abi.encodePacked(artifact.num)), keccak256(abi.encodePacked(artifact.copyNum)))), keccak256(abi.encodePacked(abi.encodePacked(artifact.longDescriptionHashed), keccak256(abi.encodePacked(artifact.privateKey)))))));
     }
 
     event cardStolen(address from, address to, uint256 tokenId);
@@ -240,31 +160,31 @@ contract NFR is ERC721Enumerable, Ownable  {
     event cardBurnt(address owner, uint256 tokenId);
 
     function duplicateCard(uint256 tokenId) public isBlackMarketContract {
-        Artifact memory newCard = Artifact({
-            num : publicArtifacts[tokenId].num,
-            copyNum : publicArtifacts[tokenId].copyNum, // duplicate doesn't increase the version num (this is power of the card) even when limit is reached more copies can be made
-            longDescriptionHashed : publicArtifacts[tokenId].longDescriptionHashed,
-            privateKey : random()
-            // TODO: copy: true
-        });
-        uint256 merkleRoot = getArtifactMerkleRoot(newCard);
-        publicArtifacts[merkleRoot] = newCard;
-        _safeMint(ownerOf(tokenId), merkleRoot);
+//        Artifact memory newCard = Artifact({
+//            num : publicArtifacts[tokenId].num,
+//            copyNum : publicArtifacts[tokenId].copyNum, // duplicate doesn't increase the version num (this is power of the card) even when limit is reached more copies can be made
+//            longDescriptionHashed : publicArtifacts[tokenId].longDescriptionHashed,
+//            privateKey : random()
+//            // TODO: copy: true
+//        });
+//        uint256 merkleRoot = getArtifactMerkleRoot(newCard);
+//        publicArtifacts[merkleRoot] = newCard;
+//        _safeMint(ownerOf(tokenId), merkleRoot);
     }
 
     function transformCard(uint256 inputTokenId, uint256 targetTokenId) public isBlackMarketContract {
         emit cardBurnt(ownerOf(inputTokenId), inputTokenId);
-        _burn(inputTokenId);
-        Artifact memory newCard = Artifact({
-            num : publicArtifacts[targetTokenId].num,
-            copyNum : publicArtifacts[targetTokenId].copyNum,
-            longDescriptionHashed : publicArtifacts[targetTokenId].longDescriptionHashed,
-            privateKey : random()
-            // TODO: copy: true
-        });
-        uint256 merkleRoot = getArtifactMerkleRoot(newCard);
-        publicArtifacts[merkleRoot] = newCard;
-        _safeMint(ownerOf(inputTokenId), merkleRoot);
+//        _burn(inputTokenId);
+//        Artifact memory newCard = Artifact({
+//            num : publicArtifacts[targetTokenId].num,
+//            copyNum : publicArtifacts[targetTokenId].copyNum,
+//            longDescriptionHashed : publicArtifacts[targetTokenId].longDescriptionHashed,
+//            privateKey : random()
+//            // TODO: copy: true
+//        });
+//        uint256 merkleRoot = getArtifactMerkleRoot(newCard);
+//        publicArtifacts[merkleRoot] = newCard;
+//        _safeMint(ownerOf(inputTokenId), merkleRoot);
     }
 
     function setBlackMarketAddress(address _BlackMarketAddress) external onlyOwner {
@@ -280,11 +200,39 @@ contract NFR is ERC721Enumerable, Ownable  {
         _;
     }
 
+    function setMergerAddress(address _MergerAddress) external onlyOwner {
+        require (MergerAddressSet == false, "already set Merger contract address");
+        MergerAddress = _MergerAddress;
+        MergerAddressSet = true;
+    }
+
+    function doMerge(uint256[2] memory inputTokens,uint256[3] memory resultTokens, bool[3] memory resultTokensMint) public isMergerContract {
+        emit cardBurnt(ownerOf(inputTokens[0]), inputTokens[0]);
+        emit cardBurnt(ownerOf(inputTokens[1]), inputTokens[1]);
+        _burn(inputTokens[0]);
+        _burn(inputTokens[1]);
+
+        for (uint i = 0; i < 3; i++) {
+            // if we are supposed to mint the relic
+            if (resultTokensMint[i]) {
+                // mint the corresponding token
+                _safeMint(ownerOf(inputTokens[0]), resultTokens[i]);
+            }
+        }
+    }
+
+    modifier isMergerContract {
+        require(MergerAddressSet == true, "MERGER CONTRACT NOT SET");
+        require(msg.sender == MergerAddress, "ONlY MERGER CONTRACT CAN CALL THIS FUNCTION");
+        _;
+    }
+
     modifier whenGameOngoing {
         require(gameOngoing, "GAME NOT ONGOING");
         _;
     }
 
+    // TODO: add to library?
     function random() internal returns (uint){
         _nonce += 1;
         return uint(keccak256(abi.encodePacked(block.difficulty, block.timestamp, _nonce, _msgSender())));
@@ -297,31 +245,4 @@ contract NFR is ERC721Enumerable, Ownable  {
     //       return string(abi.encodePacked(prefix, tokenId.toString(), suffix));
     //    }
 
-
-    //    function merge(Proof memory proof, uint[40] memory input) external {
-    //        uint256 card1 = convert64bitTo256bit(input[:4]);
-    //        uint256 card2 = convert64bitTo256bit(input[4:8]);
-    //        require(ownerOf(card1) == _msgSender(),"Must own card1");
-    //        require(ownerOf(card2) == _msgSender(),"Must own card2");
-    //        // verify merge result
-    //        _burn(card1);
-    //        _burn(card1);
-    //        uint256 card3 = convert64bitTo256bit(input[x:x+4]);
-    //        uint256 card4 = convert64bitTo256bit(input[4:8]);
-    //        _safeMint(msg.sender,card3);
-    //    }
-
-    function convert64bitTo256bit(uint[4] memory inputArray) internal pure returns(uint256){
-        uint256 result = 0;
-        for (uint8 i = 0; i < 4; i++)
-            result += inputArray[3 - i] << (64 * i);
-        return result;
-    }
-
-    function convert32bitTo256bit(uint[8] memory inputArray) internal pure returns(uint256){
-        uint256 result = 0;
-        for (uint8 i = 0; i < 8; i++)
-            result += inputArray[7 - i] << (32 * i);
-        return result;
-    }
 }

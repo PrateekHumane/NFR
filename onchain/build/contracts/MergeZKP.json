@@ -76,7 +76,8 @@
         }
       ],
       "stateMutability": "view",
-      "type": "function"
+      "type": "function",
+      "constant": true
     }
   ],
   "metadata": "{\"compiler\":{\"version\":\"0.8.9+commit.e5eed63a\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"components\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"X\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"Y\",\"type\":\"uint256\"}],\"internalType\":\"struct Pairing.G1Point\",\"name\":\"a\",\"type\":\"tuple\"},{\"components\":[{\"internalType\":\"uint256[2]\",\"name\":\"X\",\"type\":\"uint256[2]\"},{\"internalType\":\"uint256[2]\",\"name\":\"Y\",\"type\":\"uint256[2]\"}],\"internalType\":\"struct Pairing.G2Point\",\"name\":\"b\",\"type\":\"tuple\"},{\"components\":[{\"internalType\":\"uint256\",\"name\":\"X\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"Y\",\"type\":\"uint256\"}],\"internalType\":\"struct Pairing.G1Point\",\"name\":\"c\",\"type\":\"tuple\"}],\"internalType\":\"struct MergeZKP.Proof\",\"name\":\"proof\",\"type\":\"tuple\"},{\"internalType\":\"uint256[39]\",\"name\":\"input\",\"type\":\"uint256[39]\"}],\"name\":\"verifyTx\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"r\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"project:/contracts/MergeZKP.sol\":\"MergeZKP\"},\"evmVersion\":\"london\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":false,\"runs\":200},\"remappings\":[]},\"sources\":{\"project:/contracts/MergeZKP.sol\":{\"keccak256\":\"0xd60037a4bba6109167e069180579e8df46dfc8de216454af8bdbdc45c3f1a142\",\"urls\":[\"bzz-raw://33f7ef4d6bb16f2dc6d06ace4c161bcddc26c9c992574aaacf346c7f2fd56cea\",\"dweb:/ipfs/QmX3YWJtMBJZU5YUU3NJnJe6bNwRYtoLgd88GX8zWY1yVK\"]}},\"version\":1}",
@@ -49773,12 +49774,13 @@
     "5777": {
       "events": {},
       "links": {},
-      "address": "0x023B8eEa86b662585AEb1580E29c690DB7318017",
-      "transactionHash": "0x8d2f87a0b18873ecf915da12893db29859100d180030290abaf72f7658046cf3"
+      "address": "0xB1CFF9F5C84dedbc3066a229Cf187017eBa5C14c",
+      "transactionHash": "0xe88da85f356932f49378ccb6885b73c7df724fec5937672a17dc0ed0cd917d84"
     }
   },
   "schemaVersion": "3.4.3",
-  "updatedAt": "2022-05-24T16:47:02.282Z",
+  "updatedAt": "2022-05-26T19:05:58.631Z",
+  "networkType": "ethereum",
   "devdoc": {
     "kind": "dev",
     "methods": {},
