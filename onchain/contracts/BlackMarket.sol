@@ -159,7 +159,7 @@ contract BlackMarket {
     function stake(uint256 tokenId) external {
         require(nfr.ownerOf(tokenId) == msg.sender, "MUST OWN TOKEN");
         require(isStaked[tokenId] == false, "TOKEN ALREADY STAKED");
-        (uint8 relicNum,uint16 relicCopyNum, , )  = nfr.publicArtifacts(tokenId);
+        (uint32 relicNum,uint32 relicCopyNum, , )  = nfr.publicArtifacts(tokenId);
         require(relicNum != 0 && relicCopyNum != 0, "STAKED ITEM MUST BE REVEALED");
         NFRTypes.Ranks relicRank = NFRTypes.getRank(relicNum);
 //        require(relicRank >= NFRTypes.Ranks.C, "CARD MUST BE RANK C OR HIGHER TO STAKE");

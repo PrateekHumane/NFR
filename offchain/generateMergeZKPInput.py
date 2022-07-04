@@ -15,12 +15,14 @@ card_counts = [0] * 41
 long_descriptions_hashed = ['0x0000000000000000000000000000000000000000000000000000000000000000'] * 50
 # ------------------------------------#
 
+new_card_counts = card_counts.copy()
+
 token1 = {'num': 47, 'copyNum': 1,
           'longDescription': '29a6711440fe7a63e9478a2f99eae57b5ba4ec5af8cdca67a922232c71ada9e3',
-          'privateKey': '19aee9931b0edc23e9c977859d1c76011e3467f59b497dcca74f5d2e19fbeabe'}
+          'privateKey': '0000000000000000000000000000000000000000000000000000000000000000'}
 token2 = {'num': 49, 'copyNum': 1,
           'longDescription': 'f413a42af6f20a53dd943a6835aec02dff9c876f7d7f253670aa07dbaa32b05c',
-          'privateKey': '5e3f2e5d31fbf08331aef2953b16daf0f92e9c547a573b0ef4140ec7b6be7ded'}
+          'privateKey': '0000000000000000000000000000000000000000000000000000000000000000'}
 input_cards = [token1, token2]
 
 
@@ -85,7 +87,6 @@ for result_card in result_cards_IDs:
         path = ['0x0000000000000000', '0x0000000000000000', '0x0000000000000000', '0x0000000000000000']
     else:
         # TODO: DO THIS ON DB (give them card and increase count)
-        # card_counts[card_num - 1] += 1
         card_count = None
         if card_num == token1['num']:
            card_count = token1['copyNum']
@@ -93,6 +94,7 @@ for result_card in result_cards_IDs:
            card_count = token2['copyNum']
         else:
             card_count = card_counts[card_num - 1] + 1
+                new_card_counts[card_num - 1] += 1
         card = {
             # get the result cards ids as raw numbers
             'num': card_num,
@@ -100,6 +102,7 @@ for result_card in result_cards_IDs:
             'longDescription': long_descriptions_hashed[card_num - 1],
             'privateKey': codecs.encode(os.urandom(32), 'hex').decode()
         }
+        print('result card root', get_card_root(card))
         root = split_into_bits(get_card_root(card), 64)
         path = split_into_bits(get_card_path(card), 64)
 
@@ -136,6 +139,19 @@ hash2 = hasher.hash_bytes(preimage2)
 final_hash = bytes.fromhex(hash1.compress().hex() + hash2.compress().hex())
 cards_minted_hashed = hasher.hash_bytes(final_hash).compress().hex()
 print(split_into_bits(cards_minted_hashed))
+
+new_cards_minted_preimage_string = ''.join(['%0.4X' % new_card_counts[i] for i in range(len(card_counts))]) + '0' * (
+(51 - len(card_counts))) * 4
+cards_minted_preimage_full = new_cards_minted_preimage_string[:(41*4)] + hex(new_cards_minted_secret_key_int)[2:]
+
+preimage1 = bytes.fromhex(cards_minted_preimage_full[:len(cards_minted_preimage_full) // 2])
+preimage2 = bytes.fromhex(cards_minted_preimage_full[len(cards_minted_preimage_full) // 2:])
+# hash payload
+hash1 = hasher.hash_bytes(preimage1)
+hash2 = hasher.hash_bytes(preimage2)
+final_hash = bytes.fromhex(hash1.compress().hex() + hash2.compress().hex())
+new_cards_minted_hashed = hasher.hash_bytes(final_hash).compress().hex()
+print('new cards minted hashed',new_cards_minted_hashed)
 
 with open('generated_merge_input.json', 'w') as f:
     json.dump([input_cards_IDs, input_cards_copy_counts, input_cards_paths, merge_proof, result_cards_IDs, result_cards_paths,

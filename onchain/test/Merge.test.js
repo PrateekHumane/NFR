@@ -6,6 +6,8 @@ const Merger = artifacts.require("Merger");
 
 const timeMachine = require('ganache-time-traveler');
 
+const proof = require('./proof.json')
+
 contract("testing staking", async accounts => {
     let mergeInstance;
     let rareRelicsInstance;
@@ -79,6 +81,12 @@ contract("testing staking", async accounts => {
         const mergeInfo = (await MergerInstance.mergeQueue.call(head))
         expect(mergeInfo.tokenId1.eq(cards[47]));
         expect(mergeInfo.tokenId2.eq(cards[49]));
+    });
+
+    it("process merge", async () => {
+        await MergerInstance.processMerge(proof.proof, ["0xbba21a05f4f84324172726d59bb487c7e37bdf6609ea96fbb64c9ea231a2460b", "0xcb3b201542638f328dfbf792fa0e5332a152ab1d45ccce5daaecbc56eb7dcf9a", "0x800f944c671ef1b7cbb12437af4020a4fceb12f1370b1afd6d8356e72ba11f70"], [1,1,1], "0xac7e09d57e2f64aa0164f94b90bdb973edc2a5fe16334c043aba13eeca9e0b27");
+        const accountCards = (await NFRInstance.balanceOf.call(accounts[0])).toNumber();
+        console.log(accountCards);
     });
 
 });

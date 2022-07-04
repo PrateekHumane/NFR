@@ -20,11 +20,11 @@ contract NFR is ERC721Enumerable, Ownable  {
     // if we need more info than merkleRoot per card, then create a struct that the ID maps to
     // map from hiddenCardId -> merkleRoot
     uint16[9] public baseCardCopyCounts = [0, 0, 0, 0, 0, 0, 0, 0, 0];
-    uint256[9] public baseCardHashedDescription = [0x01649792131254809c4b0f4287aaeb9a5229812249af54b3a86c8dcfecda625a, 4, 5, 6, 7, 0, 1, 2, 3];
+    uint256[9] public baseCardHashedDescription = [0x01649792131254809c4b0f4287aaeb9a5229812249af54b3a86c8dcfecda625a, 4, 5, 6, 7, 0x29a6711440fe7a63e9478a2f99eae57b5ba4ec5af8cdca67a922232c71ada9e3, 1, 0xf413a42af6f20a53dd943a6835aec02dff9c876f7d7f253670aa07dbaa32b05c, 3];
 
     struct Artifact {
-        uint8 num;
-        uint16 copyNum;
+        uint32 num;
+        uint32 copyNum;
         // HIDDEN VALUES:
         uint256 longDescriptionHashed;
         uint256 privateKey;
@@ -144,8 +144,8 @@ contract NFR is ERC721Enumerable, Ownable  {
     }
 
     function getArtifactMerkleRoot(Artifact memory artifact) internal pure returns (uint256){
-        uint256 hash1 = uint256(keccak256(abi.encodePacked(keccak256(abi.encodePacked(artifact.num)), keccak256(abi.encodePacked(artifact.copyNum)))));
-        uint256 hash2 = uint256(keccak256(abi.encodePacked(keccak256(abi.encodePacked(artifact.longDescriptionHashed)), keccak256(abi.encodePacked(artifact.privateKey)))));
+        uint256 hash1 = uint256(keccak256(abi.encodePacked(artifact.num,artifact.copyNum)));
+        uint256 hash2 = uint256(keccak256(abi.encodePacked(artifact.longDescriptionHashed,artifact.privateKey)));
         return uint256(keccak256(abi.encodePacked(hash1,hash2)));
 //        return uint256(keccak256(abi.encodePacked(keccak256(abi.encodePacked(keccak256(abi.encodePacked(artifact.num)), keccak256(abi.encodePacked(artifact.copyNum)))), keccak256(abi.encodePacked(abi.encodePacked(artifact.longDescriptionHashed), keccak256(abi.encodePacked(artifact.privateKey)))))));
     }
@@ -207,6 +207,7 @@ contract NFR is ERC721Enumerable, Ownable  {
     }
 
     function doMerge(uint256[2] memory inputTokens,uint256[3] memory resultTokens, bool[3] memory resultTokensMint) public isMergerContract {
+        address mergeOwner = ownerOf(inputTokens[0]);
         emit cardBurnt(ownerOf(inputTokens[0]), inputTokens[0]);
         emit cardBurnt(ownerOf(inputTokens[1]), inputTokens[1]);
         _burn(inputTokens[0]);
@@ -216,7 +217,7 @@ contract NFR is ERC721Enumerable, Ownable  {
             // if we are supposed to mint the relic
             if (resultTokensMint[i]) {
                 // mint the corresponding token
-                _safeMint(ownerOf(inputTokens[0]), resultTokens[i]);
+                _safeMint(mergeOwner, resultTokens[i]);
             }
         }
     }
