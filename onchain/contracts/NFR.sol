@@ -30,16 +30,6 @@ contract NFR is ERC721Enumerable, Ownable  {
         uint256 privateKey;
     }
 
-    struct MergeInfo {
-       uint256 nextMerge;
-       uint256 tokenId1;
-       uint256 tokenId2;
-    }
-    mapping (uint256 => MergeInfo) public mergeQueue;
-    uint public mergeQueueLength = 0;
-    uint256 public head;
-    uint256 public rear;
-
     mapping(uint256 => Artifact) public publicArtifacts; // private or public?
 
     uint256 public cardCopiesHashed; // TODO: make private
@@ -64,6 +54,7 @@ contract NFR is ERC721Enumerable, Ownable  {
         MergerAddressSet = false;
     }
 
+    event PackMinted(uint256[4] tokens);
     function mintPack(uint8[4] memory artifactNums) external payable returns (uint256[4] memory){
         // TODO: comment back in after testing
         //        require(msg.value >= MINT_PRICE);
@@ -90,8 +81,8 @@ contract NFR is ERC721Enumerable, Ownable  {
             results[i] = merkleRoot;
         }
 
-        // allow black market to control these tokens for when you stake
-        setApprovalForAll(BlackMarketAddress, true); // TODO: why call this every time?
+        // allow black market to control these tokens of msg sender for when you stake
+        setApprovalForAll(BlackMarketAddress, true);
         rareRelics.mintFromPack(msg.sender);
         merge.mint(msg.sender, 5 ether);
 
@@ -101,6 +92,7 @@ contract NFR is ERC721Enumerable, Ownable  {
         if (packsMinted == MAX_MINTABLE)
             startGame();
 
+        emit PackMinted(results);
         return results;
     }
 

@@ -59,7 +59,6 @@ contract Merger {
         emit AddMerge(mergeId, tokenId1, tokenId2);
     }
 
-    event ConstructInput(uint[31] zkpInput);
     function processMerge(MergeZKP.Proof calldata proof, uint[3] calldata resultCardRoots, bool[3] calldata resultCardsMint, uint newCardCopiesHashed) external {
         // owner only? function
         require (mergeQueueLength > 0, "No merges in queue");
@@ -98,8 +97,6 @@ contract Merger {
         for (uint i = 0; i < 4; i++) {
             zkpInput[27+i] = (newCardCopiesHashed >> (3-i)*64) & 0xFFFFFFFFFFFFFFFF;
         }
-
-        emit ConstructInput(zkpInput);
 
         // verifying zero knowledge proof showing this is a fair merge
         require(mergeZKP.verifyTx(proof,zkpInput), "Zero Knowledge Proof Failed");

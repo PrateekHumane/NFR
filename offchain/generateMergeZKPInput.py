@@ -8,11 +8,11 @@ import json
 
 # ---- CONSTANTS ---- #
 # cards_counts_secret_key = '1acbbaaf2cb480c9359249eade3644ca1f6225a9cf1beb85710e497abf65e3a8'
+long_descriptions_hashed = ['0x0000000000000000000000000000000000000000000000000000000000000000'] * 50
 # ------------------- #
 
 # ---- grab this from the database ---#
 card_counts = [0] * 41
-long_descriptions_hashed = ['0x0000000000000000000000000000000000000000000000000000000000000000'] * 50
 # ------------------------------------#
 
 new_card_counts = card_counts.copy()
@@ -94,7 +94,7 @@ for result_card in result_cards_IDs:
            card_count = token2['copyNum']
         else:
             card_count = card_counts[card_num - 1] + 1
-                new_card_counts[card_num - 1] += 1
+            new_card_counts[card_num - 1] += 1
         card = {
             # get the result cards ids as raw numbers
             'num': card_num,
