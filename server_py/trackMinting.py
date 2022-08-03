@@ -12,7 +12,7 @@ from firebase_admin import firestore
 #   'projectId': 'NFRIslands',
 # })
 
-# Use a service account
+# Use a service account (we can remove this depending on where this script runs)
 cred = credentials.Certificate('gcp_private_key.json')
 firebase_admin.initialize_app(cred)
 

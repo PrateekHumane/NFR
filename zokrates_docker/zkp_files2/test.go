@@ -79,7 +79,7 @@ func scriptHandler(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(500)
         }
 
-		_, err = client.Collection("cities").Doc("BJ").Set(ctx, map[string]interface{}{
+		_, err = client.Collection("merges").Doc(string(mergeId)).Set(ctx, map[string]interface{}{
 		        "proof": string(proof),
 			}, firestore.MergeAll)
 		if err != nil {

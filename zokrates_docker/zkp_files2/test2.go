@@ -5,7 +5,7 @@ import (
         "log"
         "net/http"
         "os"
-        "os/exec"
+//        "os/exec"
         "io/ioutil"
 		firebase "firebase.google.com/go"
 		"context"
@@ -75,14 +75,14 @@ func scriptHandler(w http.ResponseWriter, r *http.Request) {
         }
 
         // run zokrates
-        cmd := exec.Command("/bin/sh", "script.sh")
-		output, err := cmd.CombinedOutput()
-		fmt.Printf("Output:\n%s\n", string(output))
-        if err != nil {
-			log.Fatal(err)
-			w.WriteHeader(500)
-			return
-        }
+        // cmd := exec.Command("/bin/sh", "script.sh")
+		// output, err := cmd.CombinedOutput()
+		// fmt.Printf("Output:\n%s\n", string(output))
+        // if err != nil {
+		// 	log.Fatal(err)
+		// 	w.WriteHeader(500)
+		// 	return
+        // }
 
         // read the proof json that results after running zokrates
         proof, err := os.ReadFile("proof.json")
