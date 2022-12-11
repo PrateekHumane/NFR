@@ -37,8 +37,8 @@ COPY --from=certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certifica
 WORKDIR /home/zokrates
 # Copy the binary to the production image from the builder stage.
 COPY zkp_files/* ./
-RUN zokrates compile -i merge.zok 
-RUN zokrates setup 
+# RUN zokrates compile -i merge.zok 
+# RUN zokrates setup 
 
 COPY --from=builder /app/server ./
 EXPOSE 8080

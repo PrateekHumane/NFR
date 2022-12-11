@@ -144,6 +144,8 @@ new_cards_minted_preimage_string = ''.join(['%0.4X' % new_card_counts[i] for i i
 (51 - len(card_counts))) * 4
 cards_minted_preimage_full = new_cards_minted_preimage_string[:(41*4)] + hex(new_cards_minted_secret_key_int)[2:]
 
+print(len(cards_minted_preimage_full)
+
 preimage1 = bytes.fromhex(cards_minted_preimage_full[:len(cards_minted_preimage_full) // 2])
 preimage2 = bytes.fromhex(cards_minted_preimage_full[len(cards_minted_preimage_full) // 2:])
 # hash payload

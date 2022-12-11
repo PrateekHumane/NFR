@@ -33,7 +33,8 @@ contract Merger {
         // 1024 bit preimage representing the hidden card amounts for cards other than baseCardCopyCounts
         // this is the pedersen hash for pedersen(pedersen(uint256(0),uint256(0)),pedersen(uint256(0),uint256(0)))
         // all non base cards counts are 0 when the game starts
-        cardCopiesHashed = 0xa693657d6c91fb3d012c9c0e44c2a411a0c65b00a77a54980938f73c06e82487;
+//        cardCopiesHashed = 0xa693657d6c91fb3d012c9c0e44c2a411a0c65b00a77a54980938f73c06e82487;
+        cardCopiesHashed = 0x1747801d37472f17e0d03a4d585e4e15139423058535b8d95b52c1cabeb884bf;
         }
 
     event AddMerge(uint256 mergeId, uint256 tokenId1, uint256 tokenId2);

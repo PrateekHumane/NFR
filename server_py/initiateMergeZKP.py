@@ -56,12 +56,14 @@ while True:
         merges_ref = db.collection("merges")
         merge_rear = merges_ref.order_by("date").limit_to_last(1).get()
         if len(merge_rear) > 0:
-            current_card_count = merge_rear[0].to_dict()['card_count']
+            current_card_count = merge_rear[0].to_dict()['cardCounts']
+            current_secret_key = merge_rear[0].to_dict()['secretKey']
         else:
            current_game_state = db.collection('game_states').document('current').get().to_dict()
            current_card_count = current_game_state['cardCounts']
+           current_secret_key = current_game_state['secretKey']
 
-        mergeData = getMergeInput(token1,token2,current_card_count)
+        mergeData = getMergeInput(token1,token2,current_card_count, current_secret_key)
         mergeData['date'] = datetime.datetime.now(tz=datetime.timezone.utc)
         new_merge = merges_ref.document(toHexString(mergeId))
         print(mergeData)

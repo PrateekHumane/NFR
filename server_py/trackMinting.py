@@ -54,11 +54,13 @@ while True:
         for token in event.args.tokens:
             print(type(token))
             num, copyNum, longDescription, privateKey = contracts['NFR'].functions.publicArtifacts(token).call()
+            owner = contracts['NFR'].functions.ownerOf(token).call()
             doc_ref = db.collection('tokens').document(toHexString(token))
             doc_ref.set({
                 'num' : int(toHexString(num),16),
                 'copyNum' : int(toHexString(copyNum),16),
-                'longDescription' : toHexString(longDescription),
-                'privateKey' : toHexString(privateKey)
+                'longDescription' : '%0.64X' % longDescription,
+                'privateKey' : '%0.64X' % privateKey,
+                'owner' : owner[2:]
             })
     time.sleep(1)
